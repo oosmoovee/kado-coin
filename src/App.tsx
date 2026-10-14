@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-  Activity, ArrowDownToLine, ArrowUpFromLine, Award, Check, ChevronRight, CircleHelp,
+  Activity, ArrowDownToLine, ArrowUpFromLine, Award, Check, ChevronRight, CircleHelp, Home,
   Coins, Copy, Crown, ExternalLink, Flame, Heart, Minus,
   Play, RotateCcw, Send, Settings, Share2, ShoppingBag, Sparkles, Volume2, VolumeX, X, Zap,
 } from 'lucide-react'
@@ -450,6 +450,7 @@ function ClickerGame() {
         </a>
         <div className="topbar-right">
           <div className="live-pill"><span /> IDLE GAME</div>
+          <a className="icon-btn" href="/" aria-label="Home" title="Back to KADO home"><Home size={17} /></a>
           <a className="icon-btn top-link" href={TWITTER_URL} target="_blank" rel="noreferrer" aria-label="Kado on X" title="Follow Kado on X"><ExternalLink size={17} /></a>
           <button className="icon-btn" onClick={() => setModal('help')} aria-label="How to play" title="How to play"><CircleHelp size={18} /></button>
           <button className="icon-btn" onClick={() => setModal('settings')} aria-label="Settings" title="Settings"><Settings size={18} /></button>

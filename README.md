@@ -1,6 +1,6 @@
 # KADO CLICKER
 
-A playful, responsive idle clicker built with React, TypeScript, Vite, Tailwind CSS, Framer Motion, and Lucide. Game progress is stored locally in your browser; no wallet or token transaction is involved.
+A responsive KADO homepage and playful idle clicker built with React, TypeScript, Vite, Tailwind CSS, Framer Motion, and Lucide. The homepage is `/`; the original game is available at `/play`. Game progress is stored locally in your browser; no wallet or token transaction is involved.
 
 ## Run locally
 
@@ -12,6 +12,8 @@ npm run dev
 ```
 
 Open the local URL Vite prints (usually `http://localhost:5173`). Run `npm test` for the game logic tests or `npm run build` to create a production build in `dist/`.
+
+The homepage uses the supplied KADO photos in `public/images/`. Click **PLAY KADO CLICKER** to open the existing game without changing its local save data.
 
 ## Kado images
 

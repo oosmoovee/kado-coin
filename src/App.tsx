@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   Activity, ArrowDownToLine, ArrowUpFromLine, Award, Check, ChevronRight, CircleHelp,
   Coins, Copy, Crown, ExternalLink, Flame, Heart, Minus,
-  RotateCcw, Send, Settings, Share2, ShoppingBag, Sparkles, Volume2, VolumeX, X, Zap,
+  Play, RotateCcw, Send, Settings, Share2, ShoppingBag, Sparkles, Volume2, VolumeX, X, Zap,
 } from 'lucide-react'
 import {
   ACHIEVEMENTS, EVOLUTIONS, PRESTIGE_REQUIREMENT, SAVE_KEY, UPGRADES, awardPoints,
@@ -22,6 +22,157 @@ const TWITTER_URL = import.meta.env.VITE_TWITTER_URL || 'https://x.com/KadoCoinD
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '8Eznb1ZdDjxa7ayXxDbieW2uRG5xgn1L3rudRz4Rpump'
 
 function App() {
+  return window.location.pathname.replace(/\/+$/, '') === '/play'
+    ? <ClickerGame />
+    : <HomePage />
+}
+
+function HomePage() {
+  const [copied, setCopied] = useState(false)
+  const [copyMessage, setCopyMessage] = useState('')
+  const reduceMotion = useReducedMotion()
+
+  const copyContractAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(CONTRACT_ADDRESS)
+      setCopied(true)
+      setCopyMessage('CA copied to clipboard')
+      window.setTimeout(() => setCopied(false), 1800)
+      window.setTimeout(() => setCopyMessage(''), 2800)
+    } catch {
+      setCopyMessage('Could not copy automatically. Select and copy the address above.')
+    }
+  }
+
+  return (
+    <div className="site-home">
+      <header className="home-header">
+        <a className="home-brand" href="/" aria-label="KADO home"><span>✦</span> KADO <small>$KADO</small></a>
+        <nav className="home-nav" aria-label="Main navigation">
+          <a href="#story">The story</a>
+          <a href="#kado-is-building">KADO is building</a>
+          <a href="#meet-the-legend">Meet KADO</a>
+        </nav>
+        <a className="home-header-play" href="/play"><Play size={15} fill="currentColor" /> Play</a>
+      </header>
+
+      <main>
+        <section className="home-intro" id="story">
+          <motion.article
+            className="story-card"
+            initial={false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55 }}
+          >
+            <div className="story-kicker"><span>✦</span> THE KADO STORY <span>✦</span></div>
+            <h1>KADO ($KADO) 🐕🐕🐕</h1>
+            <h2>THE DOG WITH MILLIONS OF VIEWS.</h2>
+            <p>KADO is more than just a dog. He’s the internet’s four-legged star, a familiar face that has already captured millions of views on TikTok. Now, it’s time to bring that recognition on-chain.</p>
+            <a className="play-kado-button hero-play-button" href="/play"><Play size={19} fill="currentColor" /> PLAY KADO CLICKER <span>→</span></a>
+          </motion.article>
+
+          <motion.figure
+            className="home-photo-card home-hero-photo"
+            initial={false}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, delay: 0.12 }}
+          >
+            <img src="/images/IMG_9230.jpeg" alt="KADO close up surrounded by gold coins and treasure" />
+            <figcaption><span>✦</span> A LITTLE LUCK GOES A LONG WAY</figcaption>
+          </motion.figure>
+        </section>
+
+        <article className="story-card story-continuation">
+          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕🐕</div>
+          <p>Named after my best friend’s dog, KADO carries a name that translates to luck.</p>
+          <p className="story-chant">One billion tokens. One legendary dog. One community.</p>
+          <p>No unnecessary promises. No complicated roadmap. No fake utility.</p>
+          <p className="story-signoff">Just KADO. Just luck. Just vibes. 🐶🍀</p>
+          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕</div>
+
+          <h3>TOKEN DETAILS</h3>
+          <div className="token-details">
+            <p>Name: KADO COIN</p>
+            <p>Ticker: $KADO</p>
+            <p>Supply: 1,000,000,000</p>
+            <p>Utility: None</p>
+            <p>Narrative: A viral dog / Luck / Community</p>
+          </div>
+          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕</div>
+
+          <h3>COMMUNITY</h3>
+          <div className="story-community">
+            <p>X: <a href="https://x.com/kadocoindev?s=11" target="_blank" rel="noreferrer">https://x.com/kadocoindev?s=11</a></p>
+            <p>Telegram: <a href="https://t.me/KADOCOINCOMMUNITY" target="_blank" rel="noreferrer">https://t.me/KADOCOINCOMMUNITY</a></p>
+            <p>Website: <a href="https://kado-coin.vercel.app/" target="_blank" rel="noreferrer">https://kado-coin.vercel.app/</a></p>
+          </div>
+          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕</div>
+
+          <p className="story-ca">CA: {CONTRACT_ADDRESS}</p>
+          <button className="copy-ca-button" onClick={copyContractAddress}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Copied!' : 'Copy CA'}</button>
+          <p className="copy-feedback" role="status" aria-live="polite">{copyMessage}</p>
+          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕</div>
+
+          <h3>THE NARRATIVE</h3>
+          <p>Some dogs chase balls. Some dogs chase fame. KADO found both. 🐶🍀</p>
+          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕</div>
+          <p>Millions of views on TikTok. A name that means luck. And now, a new chapter on-chain</p>
+          <p>The dog is known. The name is lucky. The community is just getting started.</p>
+          <p className="story-welcome">WELCOME TO KADO🐕🐕🐕</p>
+          <p className="story-signoff">$KADO — A little luck goes a long way.</p>
+        </article>
+
+        <section className="home-feature-section building-section" id="kado-is-building">
+          <div className="feature-copy">
+            <span className="home-eyebrow">ONE LEGENDARY DOG · ONE COMMUNITY</span>
+            <h2>KADO IS BUILDING</h2>
+          </div>
+          <motion.figure
+            className="home-photo-card feature-photo"
+            initial={reduceMotion ? undefined : { opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.55 }}
+          >
+            <img src="/images/IMG_9231.jpeg" alt="KADO wearing a yellow construction helmet among gold coins" loading="lazy" />
+            <figcaption><span>✦</span> THE NEXT CHAPTER IS UNDERWAY</figcaption>
+          </motion.figure>
+        </section>
+
+        <section className="home-feature-section legend-section" id="meet-the-legend">
+          <motion.figure
+            className="home-photo-card feature-photo"
+            initial={reduceMotion ? undefined : { opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.55 }}
+          >
+            <img src="/images/7037.jpeg" alt="KADO wearing his green lucky hat" loading="lazy" />
+            <figcaption><span>🍀</span> THE VERY GOOD BOY HIMSELF</figcaption>
+          </motion.figure>
+          <div className="feature-copy">
+            <span className="home-eyebrow">THE DOG. THE NAME. THE LUCK.</span>
+            <h2>MEET THE LEGEND</h2>
+            <a className="feature-social-link" href="https://x.com/kadocoindev?s=11" target="_blank" rel="noreferrer">Follow KADO on X <span>↗</span></a>
+            <a className="feature-social-link" href="https://t.me/KADOCOINCOMMUNITY" target="_blank" rel="noreferrer">Join the Telegram community <span>↗</span></a>
+          </div>
+        </section>
+      </main>
+
+      <footer className="home-footer">
+        <a className="home-brand" href="/" aria-label="KADO home"><span>✦</span> KADO <small>$KADO</small></a>
+        <span>Just KADO. Just luck. Just vibes. 🐶🍀</span>
+        <a href="/play">PLAY KADO CLICKER →</a>
+      </footer>
+    </div>
+  )
+}
+
+function ClickerGame() {
+  useEffect(() => {
+    document.title = 'KADO CLICKER — The goodest clicker on the internet'
+  }, [])
+
   const reduceMotion = useReducedMotion()
   const [game, setGame] = useState<GameState>(() => {
     const restored = restoreSave(localStorage.getItem(SAVE_KEY))
@@ -292,7 +443,7 @@ function App() {
     <div className="app-shell min-h-screen">
       <div className="ambient ambient-one" /><div className="ambient ambient-two" />
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Kado Clicker home">
+        <a className="brand" href="/" aria-label="Kado Clicker home">
           <span className="brand-icon">🐶</span>
           <span className="brand-word">KADO<span>CLICKER</span></span>
           <span className="beta-badge">BETA</span>

@@ -39,6 +39,10 @@ VITE_CONTRACT_ADDRESS=8Eznb1ZdDjxa7ayXxDbieW2uRG5xgn1L3rudRz4Rpump
 
 The defaults are the official community links and contract address shown above; environment variables can override them for a deployment. The game does not connect to a token contract. Never put secrets in Vite environment variables; they are public in the built website.
 
+## Deployment
+
+The `main` branch is connected to Vercel. Push commits to `main` to create production deployments; other branches and pull requests can create preview deployments.
+
 ## Gameplay and privacy
 
 KADO Points are virtual in-game points and have no cash value. They are not redeemable for $KADO tokens. The leaderboard is not connected to a backend and no rankings are shown. Progress is saved in localStorage, with JSON save export/import in Settings and up to eight hours of offline passive earnings.

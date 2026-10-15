@@ -4,6 +4,18 @@
     {
       "source": "/play",
       "destination": "/index.html"
+    },
+    {
+      "source": "/coin-info",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/lore",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/community",
+      "destination": "/index.html"
     }
   ]
 }

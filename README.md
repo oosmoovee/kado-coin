@@ -1,6 +1,6 @@
 # KADO CLICKER
 
-A responsive KADO homepage and playful idle clicker built with React, TypeScript, Vite, Tailwind CSS, Framer Motion, and Lucide. The homepage is `/`; the original game is available at `/play`. Game progress is stored locally in your browser; no wallet or token transaction is involved.
+A responsive KADO homepage and playful idle clicker built with React, TypeScript, Vite, Tailwind CSS, Framer Motion, and Lucide. The homepage is `/`, with links to play, coin information, the developing fictional lore, and community proposals; the game is available at `/play`. Community participation does not require crypto or on-chain activity. Game progress is stored locally in your browser; no wallet or token transaction is involved.
 
 ## Run locally
 

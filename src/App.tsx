@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-  Activity, ArrowDownToLine, ArrowUpFromLine, Award, Check, ChevronRight, CircleHelp, Home,
+  Activity, ArrowDownToLine, ArrowUpFromLine, Award, BookOpen, Check, ChevronRight, CircleHelp, Home,
   Coins, Copy, Crown, ExternalLink, Flame, Heart, Minus,
   Play, RotateCcw, Send, Settings, Share2, ShoppingBag, Sparkles, Volume2, VolumeX, X, Zap,
 } from 'lucide-react'
@@ -22,15 +22,99 @@ const TWITTER_URL = import.meta.env.VITE_TWITTER_URL || 'https://x.com/KadoCoinD
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '8Eznb1ZdDjxa7ayXxDbieW2uRG5xgn1L3rudRz4Rpump'
 
 function App() {
-  return window.location.pathname.replace(/\/+$/, '') === '/play'
-    ? <ClickerGame />
-    : <HomePage />
+  const path = window.location.pathname.replace(/\/+$/, '') || '/'
+  const titles: Record<string, string> = {
+    '/': 'KADO — A legend that grows together',
+    '/coin-info': 'Coin info — KADO',
+    '/lore': 'The Kado story — KADO',
+    '/community': 'Community — KADO',
+    '/play': 'KADO CLICKER — The goodest clicker on the internet',
+  }
+
+  useEffect(() => {
+    document.title = titles[path] || titles['/']
+  }, [path])
+
+  if (path === '/play') return <ClickerGame />
+
+  const page = path === '/coin-info'
+    ? <CoinInfoPage />
+    : path === '/lore'
+      ? <LorePage />
+      : path === '/community'
+        ? <CommunityPage />
+        : <HomePage />
+
+  return <SiteLayout>{page}</SiteLayout>
+}
+
+function SiteLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="site-home">
+      <header className="home-header">
+        <a className="home-brand" href="/" aria-label="KADO home"><span>✦</span> KADO <small>$KADO</small></a>
+        <nav className="home-nav" aria-label="Main navigation">
+          <a href="/coin-info">Coin info</a>
+          <a href="/lore">Lore</a>
+          <a href="/community">Community</a>
+        </nav>
+        <a className="home-header-play" href="/play"><Play size={15} fill="currentColor" /> Play</a>
+      </header>
+      <main>{children}</main>
+      <footer className="home-footer">
+        <a className="home-brand" href="/" aria-label="KADO home"><span>✦</span> KADO <small>$KADO</small></a>
+        <span>Just KADO. Just luck. Just vibes. 🐶🍀</span>
+        <a href="/play">PLAY KADO CLICKER →</a>
+      </footer>
+    </div>
+  )
 }
 
 function HomePage() {
+  return (
+    <section className="landing game-menu">
+      <div className="game-menu-copy">
+        <div className="landing-intro">
+          <span className="home-eyebrow">A LEGEND THAT GROWS TOGETHER</span>
+          <h1>A little luck goes a long way.</h1>
+          <p>Meet Kado, discover the story, and join the community. No crypto or on-chain activity needed.</p>
+        </div>
+        <article className="landing-lore">
+          <span className="lore-label">THE WORLD OF KADO</span>
+          <p className="landing-premise">An ancient civilization protects a prophecy about a future movement. The Golden Authority challenges the principle of shared opportunity.</p>
+          <p className="landing-creator-note">Build this universe with me, one meaningful decision at a time. Preserve what I establish, propose what remains undecided, and never take creative control away from me.</p>
+        </article>
+        <a className="play-menu-button" href="/play">
+          <span className="play-menu-icon"><Play size={29} fill="currentColor" /></span>
+          <span className="play-menu-label"><b>Play Kado Clicker</b><small>Enter the game</small></span>
+          <span className="play-menu-arrow" aria-hidden="true">→</span>
+        </a>
+        <div className="landing-links">
+          <a className="sketch-link landing-secondary" href="/coin-info"><Coins size={21} /><span><b>Coin info</b><small>What KADO is — and isn't</small></span><span className="landing-arrow" aria-hidden="true">↗</span></a>
+          <a className="sketch-link landing-secondary" href="/lore"><BookOpen size={21} /><span><b>Lore</b><small>Explore the story</small></span><span className="landing-arrow" aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <figure className="home-photo-card landing-photo">
+        <img src="/images/IMG_9230.jpeg" alt="KADO close up surrounded by gold coins and treasure" />
+        <figcaption><span>✦</span> THE DOG. THE NAME. THE LUCK.</figcaption>
+      </figure>
+    </section>
+  )
+}
+
+function PageHeading({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
+  return (
+    <div className="home-content-heading">
+      <span className="home-eyebrow">{eyebrow}</span>
+      <h1>{title}</h1>
+      {children && <p>{children}</p>}
+    </div>
+  )
+}
+
+function CoinInfoPage() {
   const [copied, setCopied] = useState(false)
   const [copyMessage, setCopyMessage] = useState('')
-  const reduceMotion = useReducedMotion()
 
   const copyContractAddress = async () => {
     try {
@@ -45,126 +129,93 @@ function HomePage() {
   }
 
   return (
-    <div className="site-home">
-      <header className="home-header">
-        <a className="home-brand" href="/" aria-label="KADO home"><span>✦</span> KADO <small>$KADO</small></a>
-        <nav className="home-nav" aria-label="Main navigation">
-          <a href="#story">The story</a>
-          <a href="#kado-is-building">KADO is building</a>
-          <a href="#meet-the-legend">Meet KADO</a>
-        </nav>
-        <a className="home-header-play" href="/play"><Play size={15} fill="currentColor" /> Play</a>
-      </header>
-
-      <main>
-        <section className="home-intro" id="story">
-          <motion.article
-            className="story-card"
-            initial={false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55 }}
-          >
-            <div className="story-kicker"><span>✦</span> THE KADO STORY <span>✦</span></div>
-            <h1>KADO ($KADO) 🐕🐕🐕</h1>
-            <h2>THE DOG WITH MILLIONS OF VIEWS.</h2>
-            <p>KADO is more than just a dog. He’s the internet’s four-legged star, a familiar face that has already captured millions of views on TikTok. Now, it’s time to bring that recognition on-chain.</p>
-            <a className="play-kado-button hero-play-button" href="/play"><Play size={19} fill="currentColor" /> PLAY KADO CLICKER <span>→</span></a>
-          </motion.article>
-
-          <motion.figure
-            className="home-photo-card home-hero-photo"
-            initial={false}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, delay: 0.12 }}
-          >
-            <img src="/images/IMG_9230.jpeg" alt="KADO close up surrounded by gold coins and treasure" />
-            <figcaption><span>✦</span> A LITTLE LUCK GOES A LONG WAY</figcaption>
-          </motion.figure>
-        </section>
-
-        <article className="story-card story-continuation">
-          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕🐕</div>
-          <p>Named after my best friend’s dog, KADO carries a name that translates to luck.</p>
-          <p className="story-chant">One billion tokens. One legendary dog. One community.</p>
-          <p>No unnecessary promises. No complicated roadmap. No fake utility.</p>
-          <p className="story-signoff">Just KADO. Just luck. Just vibes. 🐶🍀</p>
-          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕</div>
-
-          <h3>TOKEN DETAILS</h3>
+    <section className="home-content-section standalone-page">
+      <PageHeading eyebrow="THE SYMBOL AND THE PROJECT" title="Coin info" />
+      <div className="home-content-grid">
+        <article className="lore-card">
+          <h3>The golden coin</h3>
+          <p>The coin bearing Kado’s portrait and surrounding stars is a symbol of luck and shared fortune. Its origin, history, powers, and role in any game are still undecided. It is not established as magical or as a financial instrument.</p>
+          <div className="proposal-note">
+            <span>Possible readings · Not confirmed</span>
+            <p>It could be an emblem of good fortune shared by a community, a clue linking Kado’s modern world to the ancient civilization, or a symbol whose meaning comes from the Keepers themselves. None of these interpretations is canon yet.</p>
+          </div>
+        </article>
+        <article className="lore-card">
+          <h3>$KADO token</h3>
+          <p>The golden coin in the story is a symbol; it should not be confused with the real-world $KADO token. KADO Clicker points are virtual, have no cash value, and are not redeemable for tokens.</p>
           <div className="token-details">
             <p>Name: KADO COIN</p>
             <p>Ticker: $KADO</p>
             <p>Supply: 1,000,000,000</p>
             <p>Utility: None</p>
-            <p>Narrative: A viral dog / Luck / Community</p>
           </div>
-          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕</div>
-
-          <h3>COMMUNITY</h3>
-          <div className="story-community">
-            <p>X: <a href="https://x.com/kadocoindev?s=11" target="_blank" rel="noreferrer">https://x.com/kadocoindev?s=11</a></p>
-            <p>Telegram: <a href="https://t.me/KADOCOINCOMMUNITY" target="_blank" rel="noreferrer">https://t.me/KADOCOINCOMMUNITY</a></p>
-            <p>Website: <a href="https://kado-coin.vercel.app/" target="_blank" rel="noreferrer">https://kado-coin.vercel.app/</a></p>
-          </div>
-          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕</div>
-
           <p className="story-ca">CA: {CONTRACT_ADDRESS}</p>
           <button className="copy-ca-button" onClick={copyContractAddress}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Copied!' : 'Copy CA'}</button>
           <p className="copy-feedback" role="status" aria-live="polite">{copyMessage}</p>
-          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕</div>
-
-          <h3>THE NARRATIVE</h3>
-          <p>Some dogs chase balls. Some dogs chase fame. KADO found both. 🐶🍀</p>
-          <div className="paw-divider" aria-hidden="true">🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕🐕</div>
-          <p>Millions of views on TikTok. A name that means luck. And now, a new chapter on-chain</p>
-          <p>The dog is known. The name is lucky. The community is just getting started.</p>
-          <p className="story-welcome">WELCOME TO KADO🐕🐕🐕</p>
-          <p className="story-signoff">$KADO — A little luck goes a long way.</p>
         </article>
+      </div>
+    </section>
+  )
+}
 
-        <section className="home-feature-section building-section" id="kado-is-building">
-          <div className="feature-copy">
-            <span className="home-eyebrow">ONE LEGENDARY DOG · ONE COMMUNITY</span>
-            <h2>KADO IS BUILDING</h2>
+function LorePage() {
+  return (
+    <section className="home-content-section standalone-page">
+      <PageHeading eyebrow="THE FICTIONAL UNIVERSE · STILL UNFOLDING" title="The story so far">
+        These are the established story foundations. The unanswered questions are part of the mystery, not gaps to fill without the creator’s approval.
+      </PageHeading>
+      <div className="lore-story-grid">
+        <article className="lore-card lore-card-featured">
+          <span className="lore-label">THE ANCIENT PROPHECY</span>
+          <h3>A movement was foretold—not Kado.</h3>
+          <p>Long before the digital age, an ancient civilization predicted an era when people could connect across great distances and unite around a shared purpose. The prophecy described a movement, not Kado himself.</p>
+          <p>As Kado draws attention and the Kado Keepers gather, a connection to that prediction becomes possible—but what the prophecy truly means remains unknown.</p>
+          <p className="lore-question">Is this the movement the civilization foresaw, is there a deeper meaning, or will the connection only become clear with time? The mystery remains open.</p>
+        </article>
+        <article className="lore-card">
+          <span className="lore-label">A HIDDEN CIVILIZATION</span>
+          <h3>Why did they remain hidden?</h3>
+          <p>The civilization survived in secret to protect the prophecy. Its name, location, culture, and history have not been decided.</p>
+          <div className="proposal-note"><span>Possible explanation · Not confirmed</span><p>They may have concealed themselves because they feared outsiders could seize or misuse what they protected. This is a direction to explore, not established history.</p></div>
+          <div className="proposal-note">
+            <span>Possible ties to the modern world · Open</span>
+            <p>They might have left traces for later generations, kept their distance entirely, or found some indirect way to observe events. No contact, location, or modern relationship has been established.</p>
           </div>
-          <motion.figure
-            className="home-photo-card feature-photo"
-            initial={reduceMotion ? undefined : { opacity: 0, y: 18 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.55 }}
-          >
-            <img src="/images/IMG_9231.jpeg" alt="KADO wearing a yellow construction helmet among gold coins" loading="lazy" />
-            <figcaption><span>✦</span> THE NEXT CHAPTER IS UNDERWAY</figcaption>
-          </motion.figure>
-        </section>
-
-        <section className="home-feature-section legend-section" id="meet-the-legend">
-          <motion.figure
-            className="home-photo-card feature-photo"
-            initial={reduceMotion ? undefined : { opacity: 0, y: 18 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.55 }}
-          >
-            <img src="/images/7037.jpeg" alt="KADO wearing his green lucky hat" loading="lazy" />
-            <figcaption><span>🍀</span> THE VERY GOOD BOY HIMSELF</figcaption>
-          </motion.figure>
-          <div className="feature-copy">
-            <span className="home-eyebrow">THE DOG. THE NAME. THE LUCK.</span>
-            <h2>MEET THE LEGEND</h2>
-            <a className="feature-social-link" href="https://x.com/kadocoindev?s=11" target="_blank" rel="noreferrer">Follow KADO on X <span>↗</span></a>
-            <a className="feature-social-link" href="https://t.me/KADOCOINCOMMUNITY" target="_blank" rel="noreferrer">Join the Telegram community <span>↗</span></a>
+          <p>“Silent Guardians” is a former working title, not its confirmed name.</p>
+        </article>
+        <article className="lore-card">
+          <span className="lore-label">AN EXTERNAL ANTAGONIST</span>
+          <h3>The Golden Authority</h3>
+          <p>This working title describes a powerful institution that seeks to monopolize opportunity and fortune. Its philosophy challenges shared fortune: it may argue that opportunity must be controlled, not freely shared.</p>
+          <p>It is outside the Kado Keepers—not an internal rival faction. Its final name, leadership, methods, motives, and connection to the prophecy or the ancient civilization remain undecided.</p>
+          <div className="proposal-note">
+            <span>Possible motivations · Not confirmed</span>
+            <p>Some people might support centralized control because they believe it offers stability, predictable rules, or protection from exploitation. Its influence could depend on being seen as a trusted gatekeeper.</p>
           </div>
-        </section>
-      </main>
+          <p className="lore-question">If more people could share in opportunity, the Authority might risk losing its influence—or fear that a familiar system would become less predictable. These are story directions to consider, not settled motives.</p>
+        </article>
+      </div>
+    </section>
+  )
+}
 
-      <footer className="home-footer">
-        <a className="home-brand" href="/" aria-label="KADO home"><span>✦</span> KADO <small>$KADO</small></a>
-        <span>Just KADO. Just luck. Just vibes. 🐶🍀</span>
-        <a href="/play">PLAY KADO CLICKER →</a>
-      </footer>
-    </div>
+function CommunityPage() {
+  return (
+    <section className="home-content-section standalone-page">
+      <PageHeading eyebrow="A WORLD BUILT WITH ITS COMMUNITY" title="Everyone can be part of the story.">
+        These are possible ways to make participation meaningful—not confirmed game mechanics. On-chain participation is never a requirement.
+      </PageHeading>
+      <div className="community-proposals">
+        <article className="proposal-card"><Sparkles size={20} /><h3>Milestones &amp; shared progress</h3><p>Celebrate the Kado legend’s growth and the collective effort of the Kado Keepers.</p></article>
+        <article className="proposal-card"><BookOpen size={20} /><h3>Creative contributions</h3><p>Invite proposals for characters, relationships, places, landmarks, and story chapters.</p></article>
+        <article className="proposal-card"><Heart size={20} /><h3>Community events</h3><p>Explore events inspired by the world and its mythology, with ways to join that do not involve crypto.</p></article>
+      </div>
+      <p className="creator-note">The community can help propose and expand the universe. Its creator retains final say over foundational lore and major canon decisions.</p>
+      <div className="story-community">
+        <a href="https://x.com/kadocoindev?s=11" target="_blank" rel="noreferrer">Follow KADO on X ↗</a>
+        <a href="https://t.me/KADOCOINCOMMUNITY" target="_blank" rel="noreferrer">Join the Telegram community ↗</a>
+      </div>
+    </section>
   )
 }
 
@@ -446,7 +497,6 @@ function ClickerGame() {
         <a className="brand" href="/" aria-label="Kado Clicker home">
           <span className="brand-icon">🐶</span>
           <span className="brand-word">KADO<span>CLICKER</span></span>
-          <span className="beta-badge">BETA</span>
         </a>
         <div className="topbar-right">
           <div className="live-pill"><span /> IDLE GAME</div>

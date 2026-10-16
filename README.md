@@ -53,8 +53,11 @@ The three public rankings use Supabase Auth and server-calculated game actions. 
 2. Run `supabase/migrations/20261016000000_competitive_leaderboards.sql` in the Supabase SQL Editor.
 3. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the project's API settings.
 4. Add those same variables to the Vercel project's Production (and Preview, if desired) environment variables, then redeploy.
+5. In Supabase **Authentication → URL Configuration**, set the Site URL to `https://kado-coin.vercel.app` and add `https://kado-coin.vercel.app/play` to the Redirect URLs allowlist. Local development can also allow `http://localhost:5173/play`.
 
 The anon/publishable key is intended for browser use. Never put a Supabase service-role key in a `VITE_` variable or client-side code. Until the Supabase project, migration, and client environment variables are configured, the game remains playable with local browser saves, but sign-in and public rankings are unavailable.
+
+Signup and resend-verification requests explicitly redirect to the current website origin at `/play`. Supabase only accepts that destination when it is listed in the project's Redirect URLs.
 
 ## Gameplay and privacy
 

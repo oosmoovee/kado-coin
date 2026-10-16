@@ -238,6 +238,7 @@ function ClickerGame() {
   const [authPassword, setAuthPassword] = useState('')
   const [authUsername, setAuthUsername] = useState('')
   const [authError, setAuthError] = useState('')
+  const [verificationEmail, setVerificationEmail] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
   const [game, setGame] = useState<GameState>(() => {
     const restored = restoreSave(localStorage.getItem(SAVE_KEY))
@@ -424,14 +425,19 @@ function ClickerGame() {
         const { data, error } = await supabase.auth.signUp({
           email: authEmail.trim(),
           password: authPassword,
-          options: { data: { username: cleanUsername } },
+          options: {
+            data: { username: cleanUsername },
+            emailRedirectTo: `${window.location.origin}/play`,
+          },
         })
         if (error) throw error
         if (data.session) {
           setModal(null)
           setAuthPassword('')
+          setVerificationEmail('')
           notify('Account created! Your ranked Kado game is ready.')
         } else {
+          setVerificationEmail(authEmail.trim())
           setAuthError('Check your email to confirm your account, then sign in to start your ranked game.')
         }
       } else {
@@ -443,6 +449,26 @@ function ClickerGame() {
     } catch (error) {
       console.error('Account sign-in failed:', error)
       setAuthError(error instanceof Error ? error.message : 'Could not complete sign-in.')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  const resendVerificationEmail = async () => {
+    if (!supabase || !verificationEmail) return
+    setAuthBusy(true)
+    setAuthError('')
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: verificationEmail,
+        options: { emailRedirectTo: `${window.location.origin}/play` },
+      })
+      if (error) throw error
+      notify('A new verification email has been sent.')
+    } catch (error) {
+      console.error('Could not resend the account verification email:', error)
+      setAuthError(error instanceof Error ? error.message : 'Could not resend the verification email.')
     } finally {
       setAuthBusy(false)
     }
@@ -872,7 +898,7 @@ function ClickerGame() {
               ? <p>Online accounts and leaderboards are not connected yet. You can still play locally; local scores are not eligible for the public boards.</p>
               : session
                 ? <><p>{serverGameLoaded ? 'Your ranked game is saved to your account. Your email address is not shown on the public leaderboards.' : 'Your account is signed in, but the ranked game has not loaded yet.'}</p><div className="token-notice"><b>Separate saves</b> Your existing browser save is kept separate from your verified ranked game.</div><div className="token-notice"><b>Fair-play limits</b> Scores are calculated by the server from accepted game actions, not client-submitted totals. Rate limits discourage abuse but cannot fully prevent bots or modified clients.</div>{!serverGameLoaded && <button className="button-primary full-button" onClick={() => setServerLoadAttempt((attempt) => attempt + 1)}>Retry ranked game load</button>}<button className="button-muted full-button" onClick={() => void signOut()}><LogOut size={15} /> Sign out</button></>
-                : <><div className="account-mode-switch"><button className={authMode === 'signin' ? 'active' : ''} onClick={() => { setAuthMode('signin'); setAuthError('') }}>Sign in</button><button className={authMode === 'signup' ? 'active' : ''} onClick={() => { setAuthMode('signup'); setAuthError('') }}>Create account</button></div><form className="account-form" onSubmit={(event) => void submitAccount(event)}>{authMode === 'signup' && <label>Public username<input autoComplete="username" required minLength={3} maxLength={20} pattern="[A-Za-z0-9_]{3,20}" value={authUsername} onChange={(event) => setAuthUsername(event.target.value)} placeholder="3–20 letters, numbers, or _" /></label>}<label>Email<input type="email" autoComplete="email" required value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" /></label><label>Password<input type="password" autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="At least 8 characters" /></label>{authError && <p className="account-error" role="alert">{authError}</p>}<p className="account-private-note">Your email stays private. Only your chosen username and game scores appear publicly. Scores are server-calculated; anti-cheat rate limits are not a guarantee against bots.</p><button className="button-primary full-button" type="submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'signup' ? 'Create ranked account' : 'Sign in'}</button></form></>}</>}
+                : <><div className="account-mode-switch"><button className={authMode === 'signin' ? 'active' : ''} onClick={() => { setAuthMode('signin'); setAuthError(''); setVerificationEmail('') }}>Sign in</button><button className={authMode === 'signup' ? 'active' : ''} onClick={() => { setAuthMode('signup'); setAuthError('') }}>Create account</button></div><form className="account-form" onSubmit={(event) => void submitAccount(event)}>{authMode === 'signup' && <label>Public username<input autoComplete="username" required minLength={3} maxLength={20} pattern="[A-Za-z0-9_]{3,20}" value={authUsername} onChange={(event) => setAuthUsername(event.target.value)} placeholder="3–20 letters, numbers, or _" /></label>}<label>Email<input type="email" autoComplete="email" required value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" /></label><label>Password<input type="password" autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="At least 8 characters" /></label>{authError && <p className="account-error" role="alert">{authError}</p>}{verificationEmail && authMode === 'signup' && <><p className="account-private-note" role="status">A verification link was sent to {verificationEmail}. If it expired or sent you to an unreachable address, resend it here.</p><button className="button-muted full-button" type="button" onClick={() => void resendVerificationEmail()} disabled={authBusy}>{authBusy ? 'Please wait…' : 'Resend verification email'}</button></>}<p className="account-private-note">Your email stays private. Only your chosen username and game scores appear publicly. Scores are server-calculated; anti-cheat rate limits are not a guarantee against bots.</p><button className="button-primary full-button" type="submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'signup' ? 'Create ranked account' : 'Sign in'}</button></form></>}</>}
             {modal === 'settings' && <><span className="modal-eyebrow">MAKE YOURSELF AT HOME</span><h2>Settings</h2><p>Tweak your Kado Clicker experience.</p><button className="setting-row" onClick={() => setMuted(!muted)}><span><VolumeX size={18} /> Mute sounds</span><span className={`toggle ${muted ? 'on' : ''}`} /></button><button className="setting-row" onClick={() => setSoundOn(!soundOn)}><span><Volume2 size={18} /> Click sounds</span><span className={`toggle ${soundOn ? 'on' : ''}`} /></button><div className="save-actions"><button onClick={exportSave}><ArrowDownToLine size={16} /> Export save</button>{!isRanked && <button onClick={() => setModal('import')}><ArrowUpFromLine size={16} /> Import save</button>}</div>{isRanked ? <div className="token-notice"><b>Ranked game</b> Imports and resets are disabled so leaderboard scores stay server-verified.</div> : <button className="reset-button" onClick={() => { if (window.confirm('Start a new game? This will permanently reset your current local save.')) { const fresh = save(createInitialState()); setGame(fresh); setModal(null); notify('Fresh paws, fresh start!') } }}><Minus size={15} /> Reset game</button>}{username && <button className="reset-button" onClick={() => void signOut()}><LogOut size={15} /> Sign out of {username}</button>}</>}
             {modal === 'prestige' && <><span className="modal-eyebrow">A FRESH START. A BIGGER BARK.</span><div className="prestige-modal-icon">🐾</div><h2>Reincarnate Kado?</h2><p>Begin again with permanent Golden Paws. Each Paw boosts all production by <b>5%</b>.</p><div className="prestige-details"><span><b>You'll lose</b><small>Current points &amp; all upgrades</small></span><span><b>You'll keep</b><small>Achievements, lifetime points &amp; playtime</small></span><span><b>You'll gain</b><small>{Math.max(1, Math.floor(Math.sqrt(game.points / PRESTIGE_REQUIREMENT)))} Golden Paw(s)</small></span></div><div className="modal-actions"><button className="button-muted" onClick={() => setModal(null)}>Not yet</button><button className="button-primary" onClick={handlePrestige}><RotateCcw size={15} /> Reincarnate</button></div></>}
             {modal === 'import' && <><span className="modal-eyebrow">RESTORE YOUR JOURNEY</span><h2>Import save</h2><p>Paste your exported Kado Clicker save JSON below. This replaces current progress.</p><textarea className="import-textarea" value={importText} onChange={(event) => setImportText(event.target.value)} placeholder="Paste save JSON here..." /><div className="modal-actions"><button className="button-muted" onClick={() => setModal('settings')}>Back</button><button className="button-primary" onClick={importSave} disabled={!importText.trim()}><ArrowUpFromLine size={15} /> Import save</button></div></>}

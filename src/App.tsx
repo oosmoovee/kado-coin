@@ -3,14 +3,14 @@ import type { FormEvent, MouseEvent, ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   Activity, ArrowDownToLine, ArrowUpFromLine, Award, BookOpen, Check, ChevronRight, CircleHelp, Home,
-  Coins, Copy, Crown, ExternalLink, Flame, Heart, LogIn, LogOut, Minus, UserRound,
+  Coins, Copy, Crown, ExternalLink, Flame, Heart, Lock, LogIn, LogOut, Minus, UserRound,
   Play, RotateCcw, Send, Settings, Share2, ShoppingBag, Sparkles, Volume2, VolumeX, X, Zap,
 } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import {
   ACHIEVEMENTS, EVOLUTIONS, PRESTIGE_REQUIREMENT, SAVE_KEY, UPGRADES, awardPoints,
   createInitialState, formatNumber, getEvolution, pointsPerClick, pointsPerSecond,
-  productionMultiplier, purchaseUpgrade, restoreSave, upgradeCost, type GameState,
+  productionMultiplier, purchaseUpgrades, restoreSave, upgradeBatchCost, upgradeCost, type GameState, type PurchaseQuantity,
 } from './game'
 import { LeaderboardPanel } from './Leaderboard'
 import { parseServerGameSnapshot, supabase } from './supabase'
@@ -18,6 +18,8 @@ import { parseServerGameSnapshot, supabase } from './supabase'
 type EventType = 'zoomies' | 'viral' | 'nap'
 type GameEvent = { type: EventType; endsAt: number; title: string; description: string }
 type Tab = 'play' | 'shop' | 'stats' | 'achievements'
+type ShopCategory = 'click' | 'passive' | 'legendary'
+type Achievement = typeof ACHIEVEMENTS[number]
 
 const COMMUNITY_URL = import.meta.env.VITE_COMMUNITY_URL || ''
 const TELEGRAM_URL = import.meta.env.VITE_TELEGRAM_URL || 'https://t.me/KADOCOINCOMMUNITY'
@@ -250,6 +252,12 @@ function ClickerGame() {
   const [toast, setToast] = useState('')
   const [modal, setModal] = useState<'settings' | 'prestige' | 'import' | 'help' | 'account' | null>(null)
   const [tab, setTab] = useState<Tab>('play')
+  const [shopCategory, setShopCategory] = useState<ShopCategory>('passive')
+  const [buyQuantity, setBuyQuantity] = useState<PurchaseQuantity>(1)
+  const [purchaseFlash, setPurchaseFlash] = useState<{ upgradeId: string; sequence: number } | null>(null)
+  const [shopCelebration, setShopCelebration] = useState('')
+  const [rewardQueue, setRewardQueue] = useState<Achievement[]>([])
+  const [rewardPopup, setRewardPopup] = useState<Achievement | null>(null)
   const [muted, setMuted] = useState(false)
   const [soundOn, setSoundOn] = useState(true)
   const [combo, setCombo] = useState(0)
@@ -260,6 +268,7 @@ function ClickerGame() {
   const dogButton = useRef<HTMLButtonElement | null>(null)
   const comboTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const idRef = useRef(0)
+  const purchaseSequence = useRef(0)
   const actionQueue = useRef<Promise<void>>(Promise.resolve())
   const isRanked = Boolean(supabase && session && serverGameLoaded)
   const gameReady = !supabase || (!authLoading && (!session || serverGameLoaded))
@@ -390,11 +399,11 @@ function ClickerGame() {
     return () => { mounted = false }
   }, [notify, serverLoadAttempt, session])
 
-  const performServerAction = useCallback((action: string, upgradeId: string | null = null) => {
+  const performServerAction = useCallback((action: string, upgradeId: string | null = null, quantity = 1) => {
     if (!supabase || !session || !isRanked) return Promise.resolve()
     const client = supabase
     const run = actionQueue.current.then(async () => {
-      const { data, error } = await client.rpc('game_action', { p_action: action, p_upgrade_id: upgradeId })
+      const { data, error } = await client.rpc('game_action', { p_action: action, p_upgrade_id: upgradeId, p_quantity: quantity })
       if (error) throw error
       const snapshot = parseServerGameSnapshot(data)
       if (!snapshot) throw new Error('The server returned invalid game data.')
@@ -562,8 +571,23 @@ function ClickerGame() {
     if (nextAchievements.length) {
       setGame((current) => ({ ...current, achievements: [...current.achievements, ...nextAchievements.map((item) => item.id)] }))
       nextAchievements.forEach((item) => notify(`Achievement unlocked: ${item.name} ${item.icon}`))
+      setRewardQueue((current) => [...current, ...nextAchievements.filter((item) => item.id.startsWith('milestone-'))])
     }
   }, [game, notify])
+
+  useEffect(() => {
+    if (rewardPopup || rewardQueue.length === 0) return
+    setRewardPopup(rewardQueue[0])
+    setRewardQueue((current) => current.slice(1))
+    const timer = window.setTimeout(() => setRewardPopup(null), 3_400)
+    return () => window.clearTimeout(timer)
+  }, [rewardPopup, rewardQueue])
+
+  useEffect(() => {
+    if (!shopCelebration) return
+    const timer = window.setTimeout(() => setShopCelebration(''), 2_200)
+    return () => window.clearTimeout(timer)
+  }, [shopCelebration])
 
   useEffect(() => {
     if (evolutionIndex > previousEvolution.current) notify(`Evolution unlocked: ${EVOLUTIONS[evolutionIndex].name}!`)
@@ -600,18 +624,29 @@ function ClickerGame() {
 
   const buyUpgrade = (upgrade: typeof UPGRADES[number]) => {
     if (!gameReady) return
-    const updated = purchaseUpgrade(game, upgrade)
-    if (!updated) return
-    setGame(save(updated))
+    const owned = game.owned[upgrade.id] ?? 0
     if (isRanked) {
-      void performServerAction('purchase', upgrade.id).catch((error: unknown) => {
+      const quantity = buyQuantity === 'max' ? -1 : buyQuantity
+      void performServerAction('purchase', upgrade.id, quantity).then(() => {
+        setPurchaseFlash({ upgradeId: upgrade.id, sequence: ++purchaseSequence.current })
+        if (owned === 0 && upgrade.baseCost >= 100_000_000) setShopCelebration(upgrade.name)
+        playSound(420, 0.11)
+        notify(`${upgrade.name} acquired!`)
+      }).catch((error: unknown) => {
         console.error('Ranked upgrade purchase was rejected:', error)
         notify(error instanceof Error ? error.message : 'This upgrade could not be saved.')
         void performServerAction('load').catch((refreshError: unknown) => console.error('Unable to refresh ranked game:', refreshError))
       })
+      return
     }
+    const updated = purchaseUpgrades(game, upgrade, buyQuantity)
+    if (!updated) return
+    const bought = (updated.owned[upgrade.id] ?? 0) - owned
+    setGame(save(updated))
+    setPurchaseFlash({ upgradeId: upgrade.id, sequence: ++purchaseSequence.current })
+    if (owned === 0 && upgrade.baseCost >= 100_000_000) setShopCelebration(upgrade.name)
     playSound(420, 0.11)
-    notify(`${upgrade.name} acquired!`)
+    notify(`${bought > 1 ? `${bought}× ` : ''}${upgrade.name} acquired!`)
   }
 
   const startEvent = (type: EventType) => {
@@ -847,19 +882,44 @@ function ClickerGame() {
         <aside className={`side-panel right-panel ${tab === 'shop' ? 'mobile-active' : ''}`}>
           <section className="shop panel">
             <div className="shop-heading"><div><div className="section-kicker"><ShoppingBag size={14} /> THE GOODIE SHOP</div><p>Tools for a very good dog.</p></div><span className="shop-count">{UPGRADES.reduce((t, u) => t + (game.owned[u.id] ?? 0), 0)} OWNED</span></div>
+            <div className="shop-buy-controls" role="group" aria-label="Purchase quantity">
+              {([{ value: 1, label: 'BUY 1' }, { value: 10, label: 'BUY 10' }, { value: 'max', label: 'BUY MAX' }] as const).map((option) =>
+                <button key={option.label} className={buyQuantity === option.value ? 'active' : ''} onClick={() => setBuyQuantity(option.value)} aria-pressed={buyQuantity === option.value}>{option.label}</button>)}
+            </div>
+            <div className="shop-categories" role="tablist" aria-label="Upgrade categories">
+              {([
+                { id: 'click', label: 'Click', icon: '🐾' },
+                { id: 'passive', label: 'Income', icon: '⚡' },
+                { id: 'legendary', label: 'Legendary', icon: '👑' },
+              ] as { id: ShopCategory; label: string; icon: string }[]).map((category) =>
+                <button key={category.id} role="tab" aria-selected={shopCategory === category.id} className={shopCategory === category.id ? 'active' : ''} onClick={() => setShopCategory(category.id)}>
+                  <span>{category.icon}</span>{category.label}
+                </button>)}
+            </div>
             <div className="upgrade-list">
-              {UPGRADES.map((upgrade, index) => {
+              {UPGRADES.filter((upgrade) => upgrade.category === shopCategory).map((upgrade, index) => {
                 const owned = game.owned[upgrade.id] ?? 0
                 const cost = upgradeCost(upgrade, owned)
-                const canAfford = gameReady && game.points >= cost
-                return <motion.button key={upgrade.id} className={`upgrade-row ${canAfford ? 'affordable' : ''}`} onClick={() => buyUpgrade(upgrade)} disabled={!canAfford} whileTap={canAfford ? { scale: 0.975 } : undefined} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.035 }}>
+                const locked = upgrade.unlockAt !== undefined && game.lifetimePoints < upgrade.unlockAt
+                const selectedCost = buyQuantity === 10 ? upgradeBatchCost(upgrade, owned, 10) : cost
+                const canAfford = gameReady && !locked && game.points >= selectedCost
+                return <motion.button key={upgrade.id} className={`upgrade-row ${canAfford ? 'affordable' : ''} ${locked ? 'locked' : ''}`} onClick={() => buyUpgrade(upgrade)} disabled={!canAfford} whileTap={canAfford ? { scale: 0.975 } : undefined} initial={{ opacity: 0, x: 12 }} animate={purchaseFlash?.upgradeId === upgrade.id
+                  ? { opacity: 1, x: 0, scale: [1, 1.04, 1], boxShadow: ['0 0 0 #f1c94b00', '0 0 22px #e8c743b3', '0 0 0 #f1c94b00'] }
+                  : { opacity: 1, x: 0 }} transition={{ delay: index * 0.035, duration: purchaseFlash?.upgradeId === upgrade.id ? 0.55 : 0.2 }}>
                   <span className="upgrade-icon">{upgrade.icon}</span>
-                  <span className="upgrade-main"><span className="upgrade-name">{upgrade.name}</span><span className="upgrade-description">{upgrade.description}</span><span className={`upgrade-price ${canAfford ? 'price-ready' : ''}`}><Coins size={12} /> {formatNumber(cost)} pts</span></span>
+                  <span className="upgrade-main"><span className="upgrade-name">{upgrade.name}</span><span className="upgrade-description">{upgrade.description}</span>
+                    <span className={`upgrade-price ${canAfford ? 'price-ready' : ''}`}>{locked ? <><Lock size={11} /> Unlock at {formatNumber(upgrade.unlockAt ?? 0)} lifetime</> : <><Coins size={12} /> {formatNumber(selectedCost)} pts{buyQuantity === 10 ? ' for 10' : buyQuantity === 'max' ? ' each' : ''}</>}</span>
+                  </span>
                   <span className="upgrade-owned">{owned}</span>
                 </motion.button>
               })}
             </div>
-            <div className="shop-footnote"><Sparkles size={13} /> Prices increase by 15% with every purchase</div>
+            <div className="shop-footnote"><Sparkles size={13} /> 15% price increase per purchase · BUY MAX spends only what you can afford</div>
+            <AnimatePresence>
+              {shopCelebration && <motion.div className="shop-celebration" initial={{ opacity: 0, scale: 0.8, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: -8 }}>
+                <Sparkles size={18} /><span><b>LEGENDARY PURCHASE!</b><small>{shopCelebration} joins your pack</small></span><Coins size={20} />
+              </motion.div>}
+            </AnimatePresence>
           </section>
           <section className="reincarnation-card panel">
             <div className="reincarnation-icon"><RotateCcw size={19} /></div>
@@ -885,6 +945,9 @@ function ClickerGame() {
 
       <AnimatePresence>
         {toast && <motion.div className="toast" initial={{ y: 25, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 14, opacity: 0 }}><span>🐾</span>{toast}</motion.div>}
+        {rewardPopup && <motion.div className="milestone-popup" initial={{ y: -35, opacity: 0, scale: 0.85 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: -25, opacity: 0, scale: 0.9 }}>
+          <span className="milestone-sparkle">✦</span><span className="milestone-icon">{rewardPopup.icon}</span><span><b>MILESTONE REACHED</b><small>{rewardPopup.name}</small></span><Coins size={20} className="milestone-coin" />
+        </motion.div>}
         {offlineEarnings > 0 && <motion.div className="offline-card" initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}>
           <button className="close-offline" onClick={() => setOfflineEarnings(0)} aria-label="Dismiss offline earnings"><X size={15} /></button><span>🌙</span><div><b>Kado held down the fort!</b><small>You earned <strong>{formatNumber(offlineEarnings)} points</strong> while away.</small></div><button className="offline-ok" onClick={() => setOfflineEarnings(0)}>NICE!</button>
         </motion.div>}

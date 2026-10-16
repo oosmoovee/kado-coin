@@ -10,18 +10,30 @@ export type Upgrade = {
   baseCost: number
   effect: number
   kind: 'click' | 'passive'
+  category: 'click' | 'passive' | 'legendary'
   icon: string
+  unlockAt?: number
 }
 
 export const UPGRADES: Upgrade[] = [
-  { id: 'treat', name: 'Dog Treat', description: '+1 point per click', baseCost: 15, effect: 1, kind: 'click', icon: '🦴' },
-  { id: 'toy', name: 'Squeaky Toy', description: '+1 point per second', baseCost: 100, effect: 1, kind: 'passive', icon: '🧸' },
-  { id: 'collar', name: 'Golden Collar', description: '+5 points per second', baseCost: 500, effect: 5, kind: 'passive', icon: '✨' },
-  { id: 'doghouse', name: "Kado's Doghouse", description: '+20 points per second', baseCost: 2_000, effect: 20, kind: 'passive', icon: '🏠' },
-  { id: 'factory', name: 'Meme Factory', description: '+100 points per second', baseCost: 10_000, effect: 100, kind: 'passive', icon: '🏭' },
-  { id: 'algorithm', name: 'Viral Algorithm', description: '+500 points per second', baseCost: 50_000, effect: 500, kind: 'passive', icon: '📡' },
-  { id: 'rocket', name: 'Doge Rocket', description: '+2,500 points per second', baseCost: 250_000, effect: 2_500, kind: 'passive', icon: '🚀' },
-  { id: 'universe', name: 'Kado Universe', description: '+10,000 points per second', baseCost: 1_000_000, effect: 10_000, kind: 'passive', icon: '🌌' },
+  { id: 'treat', name: 'Dog Treat', description: '+1 point per click', baseCost: 15, effect: 1, kind: 'click', category: 'click', icon: '🦴' },
+  { id: 'toy', name: 'Squeaky Toy', description: '+1 point per second', baseCost: 100, effect: 1, kind: 'passive', category: 'passive', icon: '🧸' },
+  { id: 'collar', name: 'Golden Collar', description: '+5 points per second', baseCost: 500, effect: 5, kind: 'passive', category: 'passive', icon: '✨' },
+  { id: 'doghouse', name: "Kado's Doghouse", description: '+20 points per second', baseCost: 2_000, effect: 20, kind: 'passive', category: 'passive', icon: '🏠' },
+  { id: 'factory', name: 'Meme Factory', description: '+100 points per second', baseCost: 10_000, effect: 100, kind: 'passive', category: 'passive', icon: '🏭' },
+  { id: 'algorithm', name: 'Viral Algorithm', description: '+500 points per second', baseCost: 50_000, effect: 500, kind: 'passive', category: 'passive', icon: '📡' },
+  { id: 'rocket', name: 'Doge Rocket', description: '+2,500 points per second', baseCost: 250_000, effect: 2_500, kind: 'passive', category: 'passive', icon: '🚀' },
+  { id: 'universe', name: 'Kado Universe', description: '+10,000 points per second', baseCost: 1_000_000, effect: 10_000, kind: 'passive', category: 'passive', icon: '🌌' },
+  { id: 'lucky-clover-field', name: 'Lucky Clover Field', description: '+50,000 points per second', baseCost: 5_000_000, effect: 50_000, kind: 'passive', category: 'legendary', icon: '🍀', unlockAt: 5_000_000 },
+  { id: 'kado-meme-studio', name: 'KADO Meme Studio', description: '+250,000 points per second', baseCost: 25_000_000, effect: 250_000, kind: 'passive', category: 'legendary', icon: '🎬', unlockAt: 25_000_000 },
+  { id: 'viral-content-empire', name: 'Viral Content Empire', description: '+1,000,000 points per second', baseCost: 100_000_000, effect: 1_000_000, kind: 'passive', category: 'legendary', icon: '📱', unlockAt: 100_000_000 },
+  { id: 'golden-dog-mansion', name: 'Golden Dog Mansion', description: '+5,000,000 points per second', baseCost: 500_000_000, effect: 5_000_000, kind: 'passive', category: 'legendary', icon: '🏰', unlockAt: 500_000_000 },
+  { id: 'kado-moon-base', name: 'KADO Moon Base', description: '+25,000,000 points per second', baseCost: 2_500_000_000, effect: 25_000_000, kind: 'passive', category: 'legendary', icon: '🌙', unlockAt: 2_500_000_000 },
+  { id: 'interstellar-dog-park', name: 'Interstellar Dog Park', description: '+100,000,000 points per second', baseCost: 10_000_000_000, effect: 100_000_000, kind: 'passive', category: 'legendary', icon: '🪐', unlockAt: 10_000_000_000 },
+  { id: 'kado-multiverse-gate', name: 'KADO Multiverse Gate', description: '+500,000,000 points per second', baseCost: 50_000_000_000, effect: 500_000_000, kind: 'passive', category: 'legendary', icon: '🌌', unlockAt: 50_000_000_000 },
+  { id: 'legendary-luck-reactor', name: 'Legendary Luck Reactor', description: '+2,500,000,000 points per second', baseCost: 250_000_000_000, effect: 2_500_000_000, kind: 'passive', category: 'legendary', icon: '👑', unlockAt: 250_000_000_000 },
+  { id: 'lucky-paw-charm', name: 'Lucky Paw Charm', description: '+25 points per click', baseCost: 2_000_000, effect: 25, kind: 'click', category: 'click', icon: '🐾', unlockAt: 2_000_000 },
+  { id: 'diamond-paw-gauntlet', name: 'Diamond Paw Gauntlet', description: '+1,000 points per click', baseCost: 100_000_000, effect: 1_000, kind: 'click', category: 'click', icon: '💎', unlockAt: 100_000_000 },
 ]
 
 export type GameState = {
@@ -43,6 +55,13 @@ export const ACHIEVEMENTS = [
   { id: 'millionaire', name: 'Kado Millionaire', description: 'Earn 1 million lifetime points', icon: '💰', check: (g: GameState) => g.lifetimePoints >= 1_000_000 },
   { id: 'touch-grass', name: 'Touch Grass', description: 'Play for 60 minutes', icon: '🌱', check: (g: GameState) => g.playTime >= 3_600 },
   { id: 'legendary', name: 'Diamond Paws', description: 'Unlock Legendary Kado', icon: '💎', check: (g: GameState) => g.lifetimePoints >= 10_000_000 },
+  { id: 'milestone-1m', name: 'Million Point Milestone', description: 'Reach 1 million lifetime KADO Points', icon: '🪙', check: (g: GameState) => g.lifetimePoints >= 1_000_000 },
+  { id: 'milestone-10m', name: 'Ten Million Milestone', description: 'Reach 10 million lifetime KADO Points', icon: '✨', check: (g: GameState) => g.lifetimePoints >= 10_000_000 },
+  { id: 'milestone-100m', name: 'Hundred Million Milestone', description: 'Reach 100 million lifetime KADO Points', icon: '🐾', check: (g: GameState) => g.lifetimePoints >= 100_000_000 },
+  { id: 'milestone-1b', name: 'Billion Point Milestone', description: 'Reach 1 billion lifetime KADO Points', icon: '🪙', check: (g: GameState) => g.lifetimePoints >= 1_000_000_000 },
+  { id: 'milestone-10b', name: 'Ten Billion Milestone', description: 'Reach 10 billion lifetime KADO Points', icon: '✨', check: (g: GameState) => g.lifetimePoints >= 10_000_000_000 },
+  { id: 'milestone-100b', name: 'Hundred Billion Milestone', description: 'Reach 100 billion lifetime KADO Points', icon: '🐾', check: (g: GameState) => g.lifetimePoints >= 100_000_000_000 },
+  { id: 'milestone-1t', name: 'Trillion Point Milestone', description: 'Reach 1 trillion lifetime KADO Points', icon: '👑', check: (g: GameState) => g.lifetimePoints >= 1_000_000_000_000 },
 ]
 
 export const EVOLUTIONS = [
@@ -68,8 +87,20 @@ export function upgradeCost(upgrade: Upgrade, owned: number): number {
   return Math.ceil(upgrade.baseCost * PRICE_GROWTH ** safeOwned)
 }
 
+export function upgradeBatchCost(upgrade: Upgrade, owned: number, quantity: number): number {
+  let total = 0
+  for (let count = 0; count < quantity; count += 1) {
+    total += upgradeCost(upgrade, owned + count)
+    if (!Number.isFinite(total)) return Number.POSITIVE_INFINITY
+  }
+  return total
+}
+
 export function pointsPerClick(game: GameState): number {
-  return 1 + normalizeOwnedCount(game.owned.treat)
+  return 1
+    + normalizeOwnedCount(game.owned.treat)
+    + normalizeOwnedCount(game.owned['lucky-paw-charm']) * 25
+    + normalizeOwnedCount(game.owned['diamond-paw-gauntlet']) * 1_000
 }
 
 export function pointsPerSecond(game: GameState): number {
@@ -94,6 +125,21 @@ export function purchaseUpgrade(game: GameState, upgrade: Upgrade): GameState | 
   const cost = upgradeCost(upgrade, owned)
   if (game.points < cost) return null
   return { ...game, points: game.points - cost, owned: { ...game.owned, [upgrade.id]: owned + 1 } }
+}
+
+export type PurchaseQuantity = 1 | 10 | 'max'
+
+export function purchaseUpgrades(game: GameState, upgrade: Upgrade, quantity: PurchaseQuantity): GameState | null {
+  const targetCount = quantity === 'max' ? Number.POSITIVE_INFINITY : quantity
+  let updated = game
+  let purchased = 0
+  while (purchased < targetCount) {
+    const next = purchaseUpgrade(updated, upgrade)
+    if (!next) return quantity === 'max' && purchased > 0 ? updated : null
+    updated = next
+    purchased += 1
+  }
+  return updated
 }
 
 export function validateSave(value: unknown): GameState | null {
@@ -139,14 +185,16 @@ export function restoreSave(raw: string | null, now = Date.now()): { game: GameS
 }
 
 export function formatNumber(value: number): string {
-  if (!Number.isFinite(value)) return '0'
-  if (value < 1_000) return Math.floor(value).toLocaleString('en-US')
-  const units = [
-    { value: 1e12, suffix: 'T' },
-    { value: 1e9, suffix: 'B' },
-    { value: 1e6, suffix: 'M' },
-    { value: 1e3, suffix: 'K' },
-  ]
-  const unit = units.find((item) => value >= item.value)!
-  return `${(value / unit.value).toFixed(1).replace(/\.0$/, '')}${unit.suffix}`
+  if (Number.isNaN(value)) return '0'
+  if (value === Number.POSITIVE_INFINITY) return '∞'
+  if (value === Number.NEGATIVE_INFINITY) return '−∞'
+  const absolute = Math.abs(value)
+  if (absolute < 1_000) return Math.floor(value).toLocaleString('en-US')
+  const suffixes = ['K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod', 'Vg']
+  const exponent = Math.floor(Math.log10(absolute) / 3)
+  const scaled = absolute / 1_000 ** exponent
+  const formatted = scaled.toFixed(1).replace(/\.0$/, '')
+  const suffix = suffixes[exponent - 1]
+  if (!suffix) return `${value < 0 ? '−' : ''}${absolute.toExponential(2).replace('e+', 'e')}`
+  return `${value < 0 ? '−' : ''}${formatted}${suffix}`
 }

@@ -184,14 +184,23 @@ kbd { padding: 2px 4px; border: 1px solid #dfd9c9; border-radius: 4px; color: #9
 .event-banner.nap { background: #edf1ff; border-color: #d0d9ff; color: #596a9d; }
 .event-banner > span { font-size: 18px; }.event-banner div { display: flex; flex: 1; flex-direction: column; gap: 2px; }.event-banner b { font: 700 9px 'DM Mono',monospace; letter-spacing: .5px; }.event-banner small { font-size: 9px; opacity: .8; }.event-banner strong { font: 700 12px 'DM Mono',monospace; }
 .prestige-callout { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 11px; padding: 9px 14px; border: 1px solid #e8c95d; border-radius: 9px; background: #fff3bf; color: #8c6813; font: 600 9px 'DM Mono',monospace; cursor: pointer; animation: pulse 2s infinite; }
-.shop { overflow: hidden; padding: 17px 14px 0; }
+.shop { position: relative; overflow: hidden; padding: 17px 14px 0; }
 .shop-heading { display: flex; justify-content: space-between; align-items: flex-start; padding: 0 2px 12px; }
 .shop-heading p { margin: 6px 0 0; color: #999284; font-size: 10px; }
 .shop-count { padding: 5px 6px; border-radius: 5px; background: #f4f0e4; color: #968667; font: 500 8px 'DM Mono',monospace; }
+.shop-buy-controls { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; margin: 0 0 9px; padding: 3px; border: 1px solid #e9e2d0; border-radius: 9px; background: #f5f1e8; }
+.shop-buy-controls button { min-width: 0; padding: 7px 3px; border: 0; border-radius: 6px; background: transparent; color: #898272; font: 600 8px 'DM Mono',monospace; cursor: pointer; transition: .18s; }
+.shop-buy-controls button.active { background: #1b2118; color: #f3d67a; box-shadow: 0 1px 5px #171b1433; }
+.shop-categories { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 5px; margin: 0 0 9px; }
+.shop-categories button { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 8px 3px; border: 1px solid #e8e3d6; border-radius: 8px; background: #fffefa; color: #8d877a; font-size: 8px; font-weight: 600; cursor: pointer; transition: .18s; }
+.shop-categories button.active { border-color: #9bb184; background: #edf3e8; color: #476b3f; box-shadow: inset 0 -2px #71935d; }
+.shop-categories button span { font-size: 11px; }
 .upgrade-list { display: flex; flex-direction: column; gap: 7px; max-height: 490px; overflow-y: auto; padding: 1px 2px 4px; scrollbar-width: thin; scrollbar-color: #dfd7c7 transparent; }
 .upgrade-row { position: relative; width: 100%; display: flex; align-items: center; gap: 10px; min-height: 65px; padding: 9px 10px; border: 1px solid #ede9df; border-radius: 11px; background: #fffefa; text-align: left; cursor: not-allowed; transition: background .2s,border .2s,transform .2s,box-shadow .2s; }
-.upgrade-row.affordable { border-color: #eadb9f; background: #fffdf4; cursor: pointer; }
-.upgrade-row.affordable:hover { transform: translateY(-1px); border-color: #e2c45b; box-shadow: 0 4px 12px #97721a12; }
+.upgrade-row.affordable { border-color: #d2ad39; background: linear-gradient(110deg,#fffdf4,#fff9e6); box-shadow: 0 0 0 1px #e3c74c45,0 0 12px #e0bd3b28; cursor: pointer; }
+.upgrade-row.affordable:hover { transform: translateY(-1px); border-color: #b88b17; box-shadow: 0 0 0 1px #e3c74c70,0 0 17px #e0bd3b50; }
+.upgrade-row.locked { border-style: dashed; background: #f4f2ed; opacity: .76; }
+.upgrade-row.locked .upgrade-icon { filter: grayscale(.6); }
 .upgrade-icon { display: grid; place-items: center; flex: 0 0 38px; height: 38px; border: 1px solid #f0eadb; border-radius: 11px; background: #f9f5e9; font-size: 20px; }
 .affordable .upgrade-icon { background: #fff3cd; border-color: #f2e2a3; }
 .upgrade-main { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; }
@@ -203,6 +212,11 @@ kbd { padding: 2px 4px; border: 1px solid #dfd9c9; border-radius: 4px; color: #9
 .affordable .upgrade-owned { background: #f9edc5; color: #987016; }
 .shop-footnote { display: flex; align-items: center; gap: 6px; margin: 1px -14px 0; padding: 10px 15px; border-top: 1px solid #f0ede5; background: #fcfaf4; color: #aaa18d; font-size: 8px; }
 .shop-footnote svg { color: #d6ab31; }
+.shop-celebration { position: absolute; z-index: 5; inset: 42% 12px auto; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 15px; border: 1px solid #e9c84e; border-radius: 13px; background: linear-gradient(110deg,#172018f5,#292516f5); box-shadow: 0 0 28px #d1a92e75; color: #f3d981; pointer-events: none; }
+.shop-celebration > svg:last-child { color: #e9bf36; }
+.shop-celebration > span { display: flex; flex-direction: column; gap: 4px; text-align: center; }
+.shop-celebration b { font: 700 10px 'DM Mono',monospace; letter-spacing: .08em; }
+.shop-celebration small { color: #c7c0a8; font-size: 9px; }
 .reincarnation-card { display: flex; align-items: center; gap: 10px; padding: 13px 12px; }
 .reincarnation-icon { display: grid; flex: 0 0 36px; place-items: center; height: 36px; border-radius: 10px; background: #f5f0df; color: #b29138; }
 .reincarnation-copy { display: flex; flex: 1; flex-direction: column; gap: 2px; }
@@ -218,6 +232,13 @@ kbd { padding: 2px 4px; border: 1px solid #dfd9c9; border-radius: 4px; color: #9
 .mobile-nav { display: none; }
 .toast { position: fixed; z-index: 30; left: 50%; bottom: 28px; display: flex; align-items: center; gap: 9px; max-width: calc(100vw - 30px); padding: 11px 16px; border: 1px solid #e8dfc9; border-radius: 12px; background: #fffdf7; box-shadow: 0 8px 30px #34281220; color: #514a3b; font-size: 12px; transform: translateX(-50%); }
 .toast span { font-size: 16px; }
+.milestone-popup { position: fixed; z-index: 31; top: 92px; left: 50%; display: flex; align-items: center; gap: 11px; width: min(360px,calc(100vw - 28px)); padding: 13px 16px; border: 1px solid #d9b844; border-radius: 14px; background: linear-gradient(110deg,#192018f5,#2a2517f5); box-shadow: 0 10px 34px #1c180f55,0 0 20px #e4bd6145; color: #f6df91; transform: translateX(-50%); }
+.milestone-icon { display: grid; flex: 0 0 38px; place-items: center; height: 38px; border: 1px solid #e6c95491; border-radius: 12px; background: #e4bd6120; font-size: 21px; }
+.milestone-popup > span:nth-of-type(2) { display: flex; flex: 1; flex-direction: column; gap: 4px; }
+.milestone-popup b { font: 700 9px 'DM Mono',monospace; letter-spacing: .1em; }
+.milestone-popup small { color: #c8c0a7; font-size: 10px; }
+.milestone-sparkle,.milestone-coin { color: #f0cb50; animation: milestone-glow 1s ease-in-out infinite alternate; }
+.milestone-sparkle { font-size: 17px; }
 .offline-card { position: fixed; z-index: 28; top: 95px; left: 50%; display: flex; align-items: center; gap: 12px; width: min(405px,calc(100vw - 30px)); padding: 17px 17px; border: 1px solid #e8dba9; border-radius: 15px; background: #fff9e6; box-shadow: 0 10px 40px #41351a24; transform: translateX(-50%); }
 .offline-card > span { font-size: 28px; }.offline-card div { display: flex; flex: 1; flex-direction: column; gap: 5px; }.offline-card b { font-size: 12px; }.offline-card small { color: #928771; font-size: 10px; }.offline-card small strong { color: #9d751b; }
 .offline-ok { padding: 7px 10px; border: 0; border-radius: 7px; background: #f0cc55; color: #655019; font: 600 9px 'DM Mono',monospace; cursor: pointer; }.close-offline { position: absolute; right: 6px; top: 6px; display: grid; place-items: center; width: 21px; height: 21px; border: 0; background: transparent; color: #9e9276; cursor: pointer; }
@@ -237,6 +258,7 @@ kbd { padding: 2px 4px; border: 1px solid #dfd9c9; border-radius: 4px; color: #9
 @keyframes twinkle { from { opacity: .55; transform: scale(.85) rotate(-10deg); } to { opacity: 1; transform: scale(1.12) rotate(12deg); } }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
 @keyframes sleep { 0%,100% { opacity: .5; transform: translateY(0) rotate(8deg); } 50% { opacity: 1; transform: translateY(-8px) rotate(8deg); } }
+@keyframes milestone-glow { from { opacity: .65; transform: scale(.9) rotate(-8deg); } to { opacity: 1; transform: scale(1.12) rotate(8deg); } }
 
 @media (min-width: 1450px) { .game-grid { gap: 34px; }.dog-stage { height: 440px; } }
 @media (max-width: 1100px) {

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { UPGRADES } from './game'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -81,10 +82,14 @@ export function parseServerGameSnapshot(value: unknown): ServerGameSnapshot | nu
   if (!isRecord(game.owned)) return null
   const rawOwned = game.owned
   const owned: Record<string, number> = {}
-  for (const key of ['treat', 'toy', 'collar', 'doghouse', 'factory', 'algorithm', 'rocket', 'universe']) {
-    const count = rawOwned[key]
+  for (const upgrade of UPGRADES) {
+    const count = rawOwned[upgrade.id]
+    if (count === undefined && upgrade.unlockAt !== undefined) {
+      owned[upgrade.id] = 0
+      continue
+    }
     if (typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0) return null
-    owned[key] = count
+    owned[upgrade.id] = count
   }
   if (!Array.isArray(game.achievements) || !game.achievements.every((id) => typeof id === 'string')) return null
   if (typeof snapshot.offlineEarnings !== 'number' || !Number.isFinite(snapshot.offlineEarnings) || snapshot.offlineEarnings < 0) return null

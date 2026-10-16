@@ -24,6 +24,18 @@ describe('Supabase response parsing', () => {
       offlineEarnings: 25,
       activeEvent: { type: 'zoomies' },
     })
+    expect(parseServerGameSnapshot(validSnapshot)?.game.owned['lucky-clover-field']).toBe(0)
+    const expanded = {
+      ...validSnapshot,
+      game: {
+        ...validSnapshot.game,
+        owned: { ...validSnapshot.game.owned, 'lucky-clover-field': 2, 'lucky-paw-charm': 1 },
+      },
+    }
+    expect(parseServerGameSnapshot(expanded)?.game.owned).toMatchObject({
+      'lucky-clover-field': 2,
+      'lucky-paw-charm': 1,
+    })
   })
 
   it('rejects invalid ranked state and malformed achievement data', () => {

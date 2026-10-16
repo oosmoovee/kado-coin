@@ -17,16 +17,16 @@ The homepage uses the supplied KADO photos in `public/images/`. Click **PLAY KAD
 
 ## Kado images
 
-Kado's supplied golden coin portrait is included as `public/kado.jpg` and used as the default clicker image. To replace it, add a `public/kado.png` image. Optional stage-specific PNG files override the default when present:
+Kado's supplied golden coin portrait is included as `public/kado.jpg`. The clicker now uses the supplied stage-specific PNGs as Kado evolves:
 
-- `kado-baby.png`
-- `kado-happy.png`
-- `kado-dripped.png`
-- `kado-golden.png`
-- `kado-galactic.png`
-- `kado-legendary.png`
+- `public/kado-baby.png` — Baby Kado
+- `public/kado-happy.png` — Happy Kado in a hard hat and safety vest
+- `public/kado-dripped.png` — Dripped-Out Kado in shades and a cap
+- `public/kado-golden.png` — Golden Kado with golden coins
+- `public/kado-galactic.png` — Galactic Kado in a space suit
+- `public/kado-legendary.png` — Legendary Kado wearing a crown
 
-The image uses `object-fit: contain`; transparent backgrounds work best. Missing image files are handled automatically with the illustrated dog placeholder.
+The stage image falls back to `public/kado.png`, then `public/kado.jpg`, and finally the illustrated dog placeholder if an image is missing or cannot be loaded. Images use `object-fit: contain`; transparent backgrounds work best.
 
 ## Community links
 

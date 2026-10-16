@@ -45,6 +45,17 @@ The defaults are the official community links and contract address shown above; 
 
 The `main` branch is connected to Vercel. Push commits to `main` to create production deployments; other branches and pull requests can create preview deployments.
 
+### Competitive leaderboards
+
+The three public rankings use Supabase Auth and server-calculated game actions. To enable them:
+
+1. Create a Supabase project.
+2. Run `supabase/migrations/20261016000000_competitive_leaderboards.sql` in the Supabase SQL Editor.
+3. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the project's API settings.
+4. Add those same variables to the Vercel project's Production (and Preview, if desired) environment variables, then redeploy.
+
+The anon/publishable key is intended for browser use. Never put a Supabase service-role key in a `VITE_` variable or client-side code. Until the Supabase project, migration, and client environment variables are configured, the game remains playable with local browser saves, but sign-in and public rankings are unavailable.
+
 ## Gameplay and privacy
 
-KADO Points are virtual in-game points and have no cash value. They are not redeemable for $KADO tokens. The leaderboard is not connected to a backend and no rankings are shown. Progress is saved in localStorage, with JSON save export/import in Settings and up to eight hours of offline passive earnings.
+KADO Points are virtual in-game points and have no cash value. They are not redeemable for $KADO tokens. Signed-out progress is saved in localStorage, with JSON save export/import in Settings and up to eight hours of offline passive earnings. Ranked accounts use a separate server-managed game state; existing local saves are not imported because their scores cannot be verified, and remain available in the browser for local play or export. Clients never submit score totals: the database calculates points from allowed actions, checks purchases, and applies a per-account click rate limit. These measures discourage casual tampering but cannot fully prevent bots, automation, or modified clients, so rankings are best-effort rather than cheat-proof. Public usernames and scores appear on the leaderboard; email addresses do not.

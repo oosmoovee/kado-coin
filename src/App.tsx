@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { MouseEvent, ReactNode } from 'react'
+import type { FormEvent, MouseEvent, ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   Activity, ArrowDownToLine, ArrowUpFromLine, Award, BookOpen, Check, ChevronRight, CircleHelp, Home,
-  Coins, Copy, Crown, ExternalLink, Flame, Heart, Minus,
+  Coins, Copy, Crown, ExternalLink, Flame, Heart, LogIn, LogOut, Minus, UserRound,
   Play, RotateCcw, Send, Settings, Share2, ShoppingBag, Sparkles, Volume2, VolumeX, X, Zap,
 } from 'lucide-react'
+import type { Session } from '@supabase/supabase-js'
 import {
   ACHIEVEMENTS, EVOLUTIONS, PRESTIGE_REQUIREMENT, SAVE_KEY, UPGRADES, awardPoints,
   createInitialState, formatNumber, getEvolution, pointsPerClick, pointsPerSecond,
   productionMultiplier, purchaseUpgrade, restoreSave, upgradeCost, type GameState,
 } from './game'
+import { LeaderboardPanel } from './Leaderboard'
+import { parseServerGameSnapshot, supabase } from './supabase'
 
 type EventType = 'zoomies' | 'viral' | 'nap'
 type GameEvent = { type: EventType; endsAt: number; title: string; description: string }
@@ -225,6 +228,17 @@ function ClickerGame() {
   }, [])
 
   const reduceMotion = useReducedMotion()
+  const [session, setSession] = useState<Session | null>(null)
+  const [authLoading, setAuthLoading] = useState(Boolean(supabase))
+  const [serverGameLoaded, setServerGameLoaded] = useState(false)
+  const [serverLoadAttempt, setServerLoadAttempt] = useState(0)
+  const [username, setUsername] = useState<string | null>(null)
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authUsername, setAuthUsername] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
   const [game, setGame] = useState<GameState>(() => {
     const restored = restoreSave(localStorage.getItem(SAVE_KEY))
     return restored.game
@@ -233,7 +247,7 @@ function ClickerGame() {
   const [activeEvent, setActiveEvent] = useState<GameEvent | null>(null)
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [toast, setToast] = useState('')
-  const [modal, setModal] = useState<'settings' | 'prestige' | 'import' | 'help' | null>(null)
+  const [modal, setModal] = useState<'settings' | 'prestige' | 'import' | 'help' | 'account' | null>(null)
   const [tab, setTab] = useState<Tab>('play')
   const [muted, setMuted] = useState(false)
   const [soundOn, setSoundOn] = useState(true)
@@ -245,6 +259,9 @@ function ClickerGame() {
   const dogButton = useRef<HTMLButtonElement | null>(null)
   const comboTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const idRef = useRef(0)
+  const actionQueue = useRef<Promise<void>>(Promise.resolve())
+  const isRanked = Boolean(supabase && session && serverGameLoaded)
+  const gameReady = !supabase || (!authLoading && (!session || serverGameLoaded))
 
   const ppc = pointsPerClick(game)
   const pps = pointsPerSecond(game) * productionMultiplier(game)
@@ -261,9 +278,9 @@ function ClickerGame() {
 
   const save = useCallback((state: GameState) => {
     const updated = { ...state, lastSavedAt: Date.now() }
-    localStorage.setItem(SAVE_KEY, JSON.stringify(updated))
+    if (!session) localStorage.setItem(SAVE_KEY, JSON.stringify(updated))
     return updated
-  }, [])
+  }, [session])
 
   const playSound = useCallback((frequency = 620, duration = 0.065) => {
     if (!soundOn || muted) return
@@ -288,13 +305,160 @@ function ClickerGame() {
   }, [muted, soundOn])
 
   useEffect(() => {
+    let mounted = true
+    if (!supabase) {
+      setAuthLoading(false)
+      return
+    }
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (!mounted) return
+      if (error) {
+        console.error('Unable to restore the player session:', error)
+        setAuthError('Could not restore your account session. Please sign in again.')
+      }
+      setSession(data.session)
+      setAuthLoading(false)
+    }).catch((error: unknown) => {
+      if (!mounted) return
+      console.error('Unable to restore the player session:', error)
+      setAuthError('Could not restore your account session. Please sign in again.')
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+      setServerGameLoaded(false)
+      if (!nextSession) setUsername(null)
+    })
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (session) return
     const restored = restoreSave(localStorage.getItem(SAVE_KEY))
     setGame(save(restored.game))
     if (restored.offlineEarnings > 0) {
       setOfflineEarnings(restored.offlineEarnings)
       notify(`While you were away, Kado fetched ${formatNumber(restored.offlineEarnings)} points!`)
     } else if (restored.corrupted) notify('Your save was corrupted, so a fresh game has started.')
-  }, [notify, save])
+  }, [notify, save, session])
+
+  useEffect(() => {
+    if (!supabase || !session) return
+    let mounted = true
+    setServerGameLoaded(false)
+    void Promise.all([
+      supabase.rpc('game_action', { p_action: 'load', p_upgrade_id: null }),
+      supabase.from('player_profiles').select('username').eq('id', session.user.id).single(),
+    ]).then(([gameResult, profileResult]) => {
+      if (!mounted) return
+      if (gameResult.error) {
+        console.error('Unable to load the ranked player game:', gameResult.error)
+        notify('Could not load your ranked game. Please try again.')
+        return
+      }
+      const snapshot = parseServerGameSnapshot(gameResult.data)
+      if (!snapshot) {
+        console.error('Received invalid ranked game state.')
+        notify('The saved game data could not be read. Please contact support.')
+        return
+      }
+      if (profileResult.error) {
+        console.error('Unable to load the player profile:', profileResult.error)
+        notify('Could not load your username. Please try again.')
+        return
+      }
+      setUsername(profileResult.data.username)
+      setGame(snapshot.game)
+      setActiveEvent(snapshot.activeEvent ? {
+        type: snapshot.activeEvent.type,
+        endsAt: snapshot.activeEvent.endsAt,
+        title: { zoomies: 'KADO ZOOMIES', viral: 'VIRAL MOMENT', nap: 'NAP TIME' }[snapshot.activeEvent.type],
+        description: { zoomies: '5× points per click', viral: '2× passive production', nap: 'Kado is resting. Wake-up bonus incoming!' }[snapshot.activeEvent.type],
+      } : null)
+      setOfflineEarnings(snapshot.offlineEarnings)
+      setServerGameLoaded(true)
+      if (snapshot.offlineEarnings > 0) notify(`While you were away, Kado fetched ${formatNumber(snapshot.offlineEarnings)} points!`)
+    }).catch((error: unknown) => {
+      if (!mounted) return
+      console.error('Unable to load the ranked player game:', error)
+      notify('Could not load your ranked game. Please try again.')
+    })
+    return () => { mounted = false }
+  }, [notify, serverLoadAttempt, session])
+
+  const performServerAction = useCallback((action: string, upgradeId: string | null = null) => {
+    if (!supabase || !session || !isRanked) return Promise.resolve()
+    const client = supabase
+    const run = actionQueue.current.then(async () => {
+      const { data, error } = await client.rpc('game_action', { p_action: action, p_upgrade_id: upgradeId })
+      if (error) throw error
+      const snapshot = parseServerGameSnapshot(data)
+      if (!snapshot) throw new Error('The server returned invalid game data.')
+      setGame(snapshot.game)
+      setActiveEvent(snapshot.activeEvent ? {
+        type: snapshot.activeEvent.type,
+        endsAt: snapshot.activeEvent.endsAt,
+        title: { zoomies: 'KADO ZOOMIES', viral: 'VIRAL MOMENT', nap: 'NAP TIME' }[snapshot.activeEvent.type],
+        description: { zoomies: '5× points per click', viral: '2× passive production', nap: 'Kado is resting. Wake-up bonus incoming!' }[snapshot.activeEvent.type],
+      } : null)
+    })
+    actionQueue.current = run.catch(() => undefined)
+    return run
+  }, [isRanked, session])
+
+  const submitAccount = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!supabase) return
+    setAuthError('')
+    setAuthBusy(true)
+    try {
+      if (authMode === 'signup') {
+        const cleanUsername = authUsername.trim()
+        if (!/^[A-Za-z0-9_]{3,20}$/.test(cleanUsername)) {
+          setAuthError('Username must be 3–20 letters, numbers, or underscores.')
+          return
+        }
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail.trim(),
+          password: authPassword,
+          options: { data: { username: cleanUsername } },
+        })
+        if (error) throw error
+        if (data.session) {
+          setModal(null)
+          setAuthPassword('')
+          notify('Account created! Your ranked Kado game is ready.')
+        } else {
+          setAuthError('Check your email to confirm your account, then sign in to start your ranked game.')
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword })
+        if (error) throw error
+        setModal(null)
+        setAuthPassword('')
+      }
+    } catch (error) {
+      console.error('Account sign-in failed:', error)
+      setAuthError(error instanceof Error ? error.message : 'Could not complete sign-in.')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  const signOut = async () => {
+    if (!supabase) return
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Could not sign out:', error)
+      notify('Could not sign out. Please try again.')
+      return
+    }
+    setServerGameLoaded(false)
+    notify('Signed out. Your local game is still saved on this browser.')
+  }
 
   useEffect(() => {
     const tick = window.setInterval(() => {
@@ -321,7 +485,7 @@ function ClickerGame() {
   }, [activeEvent, notify, pps])
 
   useEffect(() => {
-    if (activeEvent) return
+    if (activeEvent || isRanked) return
     const timer = window.setTimeout(() => {
       const type: EventType = Math.random() < 1 / 3 ? 'zoomies' : Math.random() < 0.5 ? 'viral' : 'nap'
       const config = {
@@ -334,14 +498,21 @@ function ClickerGame() {
       notify(`${config.title}! ${config.description}`)
     }, 45_000 + Math.random() * 45_000)
     return () => window.clearTimeout(timer)
-  }, [activeEvent, notify])
+  }, [activeEvent, isRanked, notify])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setGame((current) => save(current))
+      if (isRanked) {
+        void performServerAction('heartbeat').catch((error: unknown) => {
+          console.error('Could not sync ranked game progress:', error)
+          notify(error instanceof Error ? error.message : 'Could not sync your ranked progress.')
+        })
+      } else if (!session) {
+        setGame((current) => save(current))
+      }
     }, 10_000)
     return () => window.clearInterval(timer)
-  }, [save])
+  }, [isRanked, notify, performServerAction, save, session])
 
   useEffect(() => () => {
     if (comboTimer.current) clearTimeout(comboTimer.current)
@@ -374,6 +545,7 @@ function ClickerGame() {
   }, [evolutionIndex, notify])
 
   const handleClickKado = (event: MouseEvent<HTMLButtonElement>) => {
+    if (!gameReady) return
     const rect = event.currentTarget.getBoundingClientRect()
     const id = ++idRef.current
     const x = event.detail === 0 ? rect.width / 2 : event.clientX - rect.left
@@ -387,6 +559,13 @@ function ClickerGame() {
       updated.clicks += 1
       return updated
     })
+    if (isRanked) {
+      void performServerAction('click').catch((error: unknown) => {
+        console.error('Ranked click was rejected:', error)
+        notify(error instanceof Error ? error.message : 'Your click could not be saved to the leaderboard.')
+        void performServerAction('load').catch((refreshError: unknown) => console.error('Unable to refresh ranked game:', refreshError))
+      })
+    }
     setCombo((value) => Math.min(value + 1, 25))
     if (comboTimer.current) clearTimeout(comboTimer.current)
     comboTimer.current = setTimeout(() => setCombo(0), 1500)
@@ -394,9 +573,17 @@ function ClickerGame() {
   }
 
   const buyUpgrade = (upgrade: typeof UPGRADES[number]) => {
+    if (!gameReady) return
     const updated = purchaseUpgrade(game, upgrade)
     if (!updated) return
     setGame(save(updated))
+    if (isRanked) {
+      void performServerAction('purchase', upgrade.id).catch((error: unknown) => {
+        console.error('Ranked upgrade purchase was rejected:', error)
+        notify(error instanceof Error ? error.message : 'This upgrade could not be saved.')
+        void performServerAction('load').catch((refreshError: unknown) => console.error('Unable to refresh ranked game:', refreshError))
+      })
+    }
     playSound(420, 0.11)
     notify(`${upgrade.name} acquired!`)
   }
@@ -414,6 +601,13 @@ function ClickerGame() {
   }
 
   const triggerRandomEvent = () => {
+    if (isRanked) {
+      void performServerAction('surprise').catch((error: unknown) => {
+        console.error('Ranked surprise request was rejected:', error)
+        notify(error instanceof Error ? error.message : 'A new surprise is not ready yet.')
+      })
+      return
+    }
     if (activeEvent) return
     const roll = Math.random()
     if (roll < 0.34) startEvent('zoomies')
@@ -423,6 +617,16 @@ function ClickerGame() {
 
   const livePps = pps * (activeEvent?.type === 'viral' ? 2 : 1)
   const handlePrestige = () => {
+    if (isRanked) {
+      void performServerAction('prestige').then(() => {
+        setModal(null)
+        notify('Reincarnation complete! Your ranked progress has been saved.')
+      }).catch((error: unknown) => {
+        console.error('Ranked reincarnation was rejected:', error)
+        notify(error instanceof Error ? error.message : 'Reincarnation could not be completed.')
+      })
+      return
+    }
     const paws = Math.max(1, Math.floor(Math.sqrt(game.points / PRESTIGE_REQUIREMENT)))
     const reset = {
       ...createInitialState(),
@@ -449,6 +653,10 @@ function ClickerGame() {
   }
 
   const importSave = () => {
+    if (isRanked) {
+      notify('Ranked saves cannot be imported because leaderboard scores are verified by the server.')
+      return
+    }
     const restored = restoreSave(importText, Date.now())
     if (restored.corrupted) {
       notify('That save file is invalid. Your current game is safe.')
@@ -545,8 +753,16 @@ function ClickerGame() {
               <span><small>TOKEN CONTRACT</small><b>{CONTRACT_ADDRESS}</b></span>
               {copied ? <Check size={15} /> : <Copy size={15} />}
             </button>
-            <div className="leaderboard-unavailable"><span>LEADERBOARD</span><b>Currently unavailable</b></div>
           </section>
+          <section className="account-card panel">
+            <div className="section-kicker"><UserRound size={14} /> PLAYER ACCOUNT</div>
+            {session && !serverGameLoaded
+              ? <><p>Your ranked game is loading. Local scores are not used for the public boards.</p><button className="account-action" onClick={() => setServerLoadAttempt((attempt) => attempt + 1)}>Retry ranked game load</button></>
+              : username
+              ? <><p>Ranked as <strong>{username}</strong></p><button className="account-action" onClick={() => void signOut()}><LogOut size={14} /> Sign out</button></>
+              : <><p>{supabase ? 'Create an account to save verified scores to the public boards.' : 'Local play is available. Online rankings will appear when connected.'}</p><button className="account-action" onClick={() => { setAuthError(''); setModal('account') }}><LogIn size={14} /> {supabase ? 'Sign in / create account' : 'Account setup'}</button></>}
+          </section>
+          <LeaderboardPanel username={username} onAccountClick={() => { setAuthError(''); setModal('account') }} />
         </aside>
 
         <section className={`center-panel ${tab === 'play' ? 'mobile-active' : ''}`}>
@@ -571,6 +787,7 @@ function ClickerGame() {
               ref={dogButton}
               className={`dog-button ${activeEvent?.type === 'nap' ? 'sleepy' : ''}`}
               onClick={handleClickKado}
+              disabled={!gameReady}
               aria-label={`Click Kado to earn ${formatNumber(ppc)} KADO Points`}
               title="Every 5 consecutive clicks adds a bonus point"
               whileTap={reduceMotion ? undefined : { scale: 0.91, rotate: -3 }}
@@ -588,7 +805,7 @@ function ClickerGame() {
             </motion.button>
             <div className="stage-floor" />
             {combo >= 3 && <motion.div className="combo-badge" initial={{ scale: 0 }} animate={{ scale: 1 }} key={combo}>🔥 {combo} COMBO</motion.div>}
-            <button className="zoomies-trigger" onClick={triggerRandomEvent} disabled={!eventsOpen} title="Trigger a random surprise event">
+            <button className="zoomies-trigger" onClick={triggerRandomEvent} disabled={!eventsOpen || !gameReady} title="Trigger a random surprise event">
               <Sparkles size={14} /> {activeEvent ? 'EVENT LIVE' : 'SURPRISE ME'}
             </button>
           </div>
@@ -598,7 +815,7 @@ function ClickerGame() {
             <div className="progress-track"><motion.div className="progress-fill" animate={{ width: `${nextEvolution ? Math.min(100, ((game.lifetimePoints - evolution.threshold) / (nextEvolution.threshold - evolution.threshold)) * 100) : 100}%` }} /></div>
             <small>{nextEvolution ? `${formatNumber(Math.max(0, nextEvolution.threshold - game.lifetimePoints))} points to go` : 'You are the very goodest boy.'}</small>
           </div>
-          {game.points >= PRESTIGE_REQUIREMENT && <button className="prestige-callout" onClick={() => setModal('prestige')}><RotateCcw size={16} /> REINCARNATION AVAILABLE <ChevronRight size={16} /></button>}
+          {gameReady && game.points >= PRESTIGE_REQUIREMENT && <button className="prestige-callout" onClick={() => setModal('prestige')}><RotateCcw size={16} /> REINCARNATION AVAILABLE <ChevronRight size={16} /></button>}
         </section>
 
         <aside className={`side-panel right-panel ${tab === 'shop' ? 'mobile-active' : ''}`}>
@@ -608,7 +825,7 @@ function ClickerGame() {
               {UPGRADES.map((upgrade, index) => {
                 const owned = game.owned[upgrade.id] ?? 0
                 const cost = upgradeCost(upgrade, owned)
-                const canAfford = game.points >= cost
+                const canAfford = gameReady && game.points >= cost
                 return <motion.button key={upgrade.id} className={`upgrade-row ${canAfford ? 'affordable' : ''}`} onClick={() => buyUpgrade(upgrade)} disabled={!canAfford} whileTap={canAfford ? { scale: 0.975 } : undefined} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.035 }}>
                   <span className="upgrade-icon">{upgrade.icon}</span>
                   <span className="upgrade-main"><span className="upgrade-name">{upgrade.name}</span><span className="upgrade-description">{upgrade.description}</span><span className={`upgrade-price ${canAfford ? 'price-ready' : ''}`}><Coins size={12} /> {formatNumber(cost)} pts</span></span>
@@ -621,7 +838,7 @@ function ClickerGame() {
           <section className="reincarnation-card panel">
             <div className="reincarnation-icon"><RotateCcw size={19} /></div>
             <div className="reincarnation-copy"><b>REINCARNATION</b><span>Reset. Rise. Repeat.</span><small>Unlock at {formatNumber(PRESTIGE_REQUIREMENT)} current points</small></div>
-            <button onClick={() => game.points >= PRESTIGE_REQUIREMENT && setModal('prestige')} disabled={game.points < PRESTIGE_REQUIREMENT} aria-label="Reincarnation details"><ChevronRight size={18} /></button>
+            <button onClick={() => game.points >= PRESTIGE_REQUIREMENT && setModal('prestige')} disabled={!gameReady || game.points < PRESTIGE_REQUIREMENT} aria-label="Reincarnation details"><ChevronRight size={18} /></button>
           </section>
           <section className="share-card">
             <div className="share-doodle">✦</div><div><b>Beat the pack?</b><span>Show off your score.</span></div>
@@ -651,7 +868,12 @@ function ClickerGame() {
         {modal && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setModal(null)}>
           <motion.div className="modal-card" initial={{ opacity: 0, scale: 0.94, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }} role="dialog" aria-modal="true">
             <button className="modal-close" onClick={() => setModal(null)} aria-label="Close dialog"><X size={18} /></button>
-            {modal === 'settings' && <><span className="modal-eyebrow">MAKE YOURSELF AT HOME</span><h2>Settings</h2><p>Tweak your Kado Clicker experience.</p><button className="setting-row" onClick={() => setMuted(!muted)}><span><VolumeX size={18} /> Mute sounds</span><span className={`toggle ${muted ? 'on' : ''}`} /></button><button className="setting-row" onClick={() => setSoundOn(!soundOn)}><span><Volume2 size={18} /> Click sounds</span><span className={`toggle ${soundOn ? 'on' : ''}`} /></button><div className="save-actions"><button onClick={exportSave}><ArrowDownToLine size={16} /> Export save</button><button onClick={() => setModal('import')}><ArrowUpFromLine size={16} /> Import save</button></div><button className="reset-button" onClick={() => { if (window.confirm('Start a new game? This will permanently reset your current local save.')) { const fresh = save(createInitialState()); setGame(fresh); setModal(null); notify('Fresh paws, fresh start!') } }}><Minus size={15} /> Reset game</button></>}
+            {modal === 'account' && <><span className="modal-eyebrow">YOUR PLACE IN THE PACK</span><h2>{username ? `Welcome, ${username}` : 'Player account'}</h2>{!supabase
+              ? <p>Online accounts and leaderboards are not connected yet. You can still play locally; local scores are not eligible for the public boards.</p>
+              : session
+                ? <><p>{serverGameLoaded ? 'Your ranked game is saved to your account. Your email address is not shown on the public leaderboards.' : 'Your account is signed in, but the ranked game has not loaded yet.'}</p><div className="token-notice"><b>Separate saves</b> Your existing browser save is kept separate from your verified ranked game.</div><div className="token-notice"><b>Fair-play limits</b> Scores are calculated by the server from accepted game actions, not client-submitted totals. Rate limits discourage abuse but cannot fully prevent bots or modified clients.</div>{!serverGameLoaded && <button className="button-primary full-button" onClick={() => setServerLoadAttempt((attempt) => attempt + 1)}>Retry ranked game load</button>}<button className="button-muted full-button" onClick={() => void signOut()}><LogOut size={15} /> Sign out</button></>
+                : <><div className="account-mode-switch"><button className={authMode === 'signin' ? 'active' : ''} onClick={() => { setAuthMode('signin'); setAuthError('') }}>Sign in</button><button className={authMode === 'signup' ? 'active' : ''} onClick={() => { setAuthMode('signup'); setAuthError('') }}>Create account</button></div><form className="account-form" onSubmit={(event) => void submitAccount(event)}>{authMode === 'signup' && <label>Public username<input autoComplete="username" required minLength={3} maxLength={20} pattern="[A-Za-z0-9_]{3,20}" value={authUsername} onChange={(event) => setAuthUsername(event.target.value)} placeholder="3–20 letters, numbers, or _" /></label>}<label>Email<input type="email" autoComplete="email" required value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" /></label><label>Password<input type="password" autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="At least 8 characters" /></label>{authError && <p className="account-error" role="alert">{authError}</p>}<p className="account-private-note">Your email stays private. Only your chosen username and game scores appear publicly. Scores are server-calculated; anti-cheat rate limits are not a guarantee against bots.</p><button className="button-primary full-button" type="submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'signup' ? 'Create ranked account' : 'Sign in'}</button></form></>}</>}
+            {modal === 'settings' && <><span className="modal-eyebrow">MAKE YOURSELF AT HOME</span><h2>Settings</h2><p>Tweak your Kado Clicker experience.</p><button className="setting-row" onClick={() => setMuted(!muted)}><span><VolumeX size={18} /> Mute sounds</span><span className={`toggle ${muted ? 'on' : ''}`} /></button><button className="setting-row" onClick={() => setSoundOn(!soundOn)}><span><Volume2 size={18} /> Click sounds</span><span className={`toggle ${soundOn ? 'on' : ''}`} /></button><div className="save-actions"><button onClick={exportSave}><ArrowDownToLine size={16} /> Export save</button>{!isRanked && <button onClick={() => setModal('import')}><ArrowUpFromLine size={16} /> Import save</button>}</div>{isRanked ? <div className="token-notice"><b>Ranked game</b> Imports and resets are disabled so leaderboard scores stay server-verified.</div> : <button className="reset-button" onClick={() => { if (window.confirm('Start a new game? This will permanently reset your current local save.')) { const fresh = save(createInitialState()); setGame(fresh); setModal(null); notify('Fresh paws, fresh start!') } }}><Minus size={15} /> Reset game</button>}{username && <button className="reset-button" onClick={() => void signOut()}><LogOut size={15} /> Sign out of {username}</button>}</>}
             {modal === 'prestige' && <><span className="modal-eyebrow">A FRESH START. A BIGGER BARK.</span><div className="prestige-modal-icon">🐾</div><h2>Reincarnate Kado?</h2><p>Begin again with permanent Golden Paws. Each Paw boosts all production by <b>5%</b>.</p><div className="prestige-details"><span><b>You'll lose</b><small>Current points &amp; all upgrades</small></span><span><b>You'll keep</b><small>Achievements, lifetime points &amp; playtime</small></span><span><b>You'll gain</b><small>{Math.max(1, Math.floor(Math.sqrt(game.points / PRESTIGE_REQUIREMENT)))} Golden Paw(s)</small></span></div><div className="modal-actions"><button className="button-muted" onClick={() => setModal(null)}>Not yet</button><button className="button-primary" onClick={handlePrestige}><RotateCcw size={15} /> Reincarnate</button></div></>}
             {modal === 'import' && <><span className="modal-eyebrow">RESTORE YOUR JOURNEY</span><h2>Import save</h2><p>Paste your exported Kado Clicker save JSON below. This replaces current progress.</p><textarea className="import-textarea" value={importText} onChange={(event) => setImportText(event.target.value)} placeholder="Paste save JSON here..." /><div className="modal-actions"><button className="button-muted" onClick={() => setModal('settings')}>Back</button><button className="button-primary" onClick={importSave} disabled={!importText.trim()}><ArrowUpFromLine size={15} /> Import save</button></div></>}
             {modal === 'help' && <><span className="modal-eyebrow">THE VERY SHORT VERSION</span><h2>How to play</h2><div className="help-list"><p><span>01</span> Click Kado to earn KADO Points. Go on, give him a boop.</p><p><span>02</span> Spend points on upgrades to make every click and second count.</p><p><span>03</span> Earn lifetime points to evolve Kado and unlock achievements.</p><p><span>04</span> Come back later — Kado earns while you're away (up to 8 hours).</p><p><span>05</span> Reincarnate at 10M current points for permanent Golden Paws.</p></div><div className="token-notice"><b>Just a game!</b> KADO Points are virtual in-game points and have no cash value. They are not redeemable for $KADO tokens.</div><button className="button-primary full-button" onClick={() => setModal(null)}>Got it, let's play! <ChevronRight size={16} /></button></>}
